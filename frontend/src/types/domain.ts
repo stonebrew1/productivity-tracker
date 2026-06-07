@@ -1,0 +1,49 @@
+export type TaskPriority = "low" | "medium" | "high";
+export type TaskStatus = "todo" | "in_progress" | "done";
+
+export type User = {
+  id: string;
+  email: string;
+  role: "user" | "admin";
+  created_at: string;
+};
+
+export type Category = {
+  id: string;
+  name: string;
+};
+
+export type Task = {
+  id: string;
+  title: string;
+  description: string | null;
+  priority: TaskPriority;
+  status: TaskStatus;
+  deadline: string | null;
+  completed_at: string | null;
+  category_id: string | null;
+  parent_id: string | null;
+};
+
+export type Achievement = {
+  id: string;
+  title: string;
+  description: string;
+  awarded_at: string;
+  task_id: string | null;
+};
+
+export type Stats = {
+  total_tasks: number;
+  completed_tasks: number;
+  current_streak: number;
+  completion_rate: number;
+  by_priority: Record<string, number>;
+  by_status: Record<string, number>;
+};
+
+export type TokenResponse = {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+};
