@@ -27,6 +27,8 @@ class PersonRead(BaseModel):
     email: EmailStr
     avatar_url: str | None
     level: int
+    current_streak: int
+    last_active_at: datetime | None
     is_following: bool
 
 
@@ -46,3 +48,15 @@ class FeedPostRead(BaseModel):
     author: FeedAuthor
     reactions_count: int
     reacted_by_me: bool
+
+
+class LeaderboardEntryRead(BaseModel):
+    rank: int
+    user_id: UUID
+    display_name: str | None
+    email: EmailStr
+    avatar_url: str | None
+    level: int
+    current_streak: int
+    weekly_xp: int
+    is_current_user: bool

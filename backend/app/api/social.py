@@ -1,17 +1,19 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models.social import ActivityPost, Follow, PostReaction
+from app.models.social import ActivityPost, Follow, PostReaction, XpAward
 from app.models.user import User
 from app.models.user_stats import UserStats
-from app.schemas.social import FeedAuthor, FeedPostRead, PersonRead, ProfileRead
+from app.schemas.social import FeedAuthor, FeedPostRead, LeaderboardEntryRead, PersonRead, ProfileRead
 from app.schemas.user import ProfileUpdate
-from app.services.gamification_service import gamification_snapshot, level_from_xp
+from app.services.gamification_service import award_quest_rewards, gamification_snapshot, level_from_xp
 from app.services.stats_service import ensure_stats
 
 
@@ -50,9 +52,11 @@ async def list_people(
     )
     rows = (
         await db.execute(
-            select(User, UserStats)
+            select(User, UserStats, func.max(ActivityPost.created_at))
             .outerjoin(UserStats, UserStats.user_id == User.id)
+            .outerjoin(ActivityPost, ActivityPost.user_id == User.id)
             .where(User.id != current_user.id)
+            .group_by(User.id, UserStats.id)
             .order_by(User.display_name.asc().nulls_last(), User.email)
             .limit(50)
         )
@@ -64,9 +68,59 @@ async def list_people(
             email=user.email,
             avatar_url=user.avatar_url,
             level=level_from_xp(stats.xp_total if stats else 0),
+            current_streak=stats.current_streak if stats else 0,
+            last_active_at=last_active_at,
             is_following=user.id in following_ids,
         )
-        for user, stats in rows
+        for user, stats, last_active_at in rows
+    ]
+
+
+@router.get("/leaderboard", response_model=list[LeaderboardEntryRead])
+async def read_leaderboard(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[LeaderboardEntryRead]:
+    now = datetime.now(timezone.utc)
+    week_start = datetime.combine(
+        (now - timedelta(days=now.weekday())).date(),
+        datetime.min.time(),
+        tzinfo=timezone.utc,
+    )
+    followed = select(Follow.followed_id).where(Follow.follower_id == current_user.id)
+    rows = (
+        await db.execute(
+            select(
+                User,
+                UserStats,
+                func.coalesce(func.sum(XpAward.amount), 0).label("weekly_xp"),
+            )
+            .outerjoin(UserStats, UserStats.user_id == User.id)
+            .outerjoin(
+                XpAward,
+                (XpAward.user_id == User.id) & (XpAward.awarded_at >= week_start),
+            )
+            .where(or_(User.id == current_user.id, User.id.in_(followed)))
+            .group_by(User.id, UserStats.id)
+            .order_by(
+                func.coalesce(func.sum(XpAward.amount), 0).desc(),
+                User.display_name.asc().nulls_last(),
+            )
+        )
+    ).all()
+    return [
+        LeaderboardEntryRead(
+            rank=index,
+            user_id=user.id,
+            display_name=user.display_name,
+            email=user.email,
+            avatar_url=user.avatar_url,
+            level=level_from_xp(stats.xp_total if stats else 0),
+            current_streak=stats.current_streak if stats else 0,
+            weekly_xp=int(weekly_xp),
+            is_current_user=user.id == current_user.id,
+        )
+        for index, (user, stats, weekly_xp) in enumerate(rows, start=1)
     ]
 
 
@@ -167,6 +221,11 @@ async def add_reaction(
     post = await db.get(ActivityPost, post_id)
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found.")
+    if post.user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Encouragement is reserved for other people's progress.",
+        )
     allowed = post.user_id == current_user.id or await db.scalar(
         select(Follow.id).where(
             Follow.follower_id == current_user.id, Follow.followed_id == post.user_id
@@ -181,6 +240,8 @@ async def add_reaction(
     )
     if not existing:
         db.add(PostReaction(post_id=post_id, user_id=current_user.id))
+        await db.flush()
+        await award_quest_rewards(current_user.id, db)
         await db.commit()
 
 

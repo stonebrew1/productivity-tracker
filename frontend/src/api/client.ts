@@ -5,6 +5,7 @@ import type {
   Category,
   FeedPost,
   GamificationDashboard,
+  LeaderboardEntry,
   Person,
   Profile,
   Stats,
@@ -80,6 +81,7 @@ export const api = {
   updateProfile: (payload: { display_name?: string | null; bio?: string | null; avatar_url?: string | null }) =>
     request<Profile>("/social/profile", { method: "PUT", body: JSON.stringify(payload) }),
   people: () => request<Person[]>("/social/people"),
+  leaderboard: () => request<LeaderboardEntry[]>("/social/leaderboard"),
   follow: (id: string) => request<void>(`/social/people/${id}/follow`, { method: "POST" }),
   unfollow: (id: string) => request<void>(`/social/people/${id}/follow`, { method: "DELETE" }),
   feed: () => request<FeedPost[]>("/social/feed"),

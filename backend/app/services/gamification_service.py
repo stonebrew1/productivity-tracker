@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.achievement import Achievement
-from app.models.social import ActivityPost, GamificationRule, QuestCompletion, XpAward
+from app.models.social import ActivityPost, GamificationRule, PostReaction, QuestCompletion, XpAward
 from app.models.task import Task, TaskStatus, TaskVisibility
 from app.models.user_stats import UserStats
 from app.schemas.gamification import BadgeProgressRead, GamificationDashboardRead, QuestRead
@@ -23,6 +23,7 @@ DEFAULT_RULES = {
         "daily_focus_1": 15,
         "weekly_finish_5": 60,
         "weekly_share_2": 30,
+        "weekly_encourage_3": 25,
     },
 }
 
@@ -58,6 +59,14 @@ QUEST_CATALOG = [
         "cadence": "weekly",
         "metric": "public",
         "target": 2,
+    },
+    {
+        "code": "weekly_encourage_3",
+        "title": "Lift the circle",
+        "description": "Encourage three updates from people you follow this week.",
+        "cadence": "weekly",
+        "metric": "reactions",
+        "target": 3,
     },
 ]
 
@@ -220,7 +229,7 @@ async def gamification_dashboard(user_id: UUID, db: AsyncSession) -> Gamificatio
                 title=quest["title"],
                 description=quest["description"],
                 cadence=quest["cadence"],
-                progress=min(progress, quest["target"]),
+                progress=quest["target"] if completed else min(progress, quest["target"]),
                 target=quest["target"],
                 reward_xp=int(rewards[quest["code"]]),
                 completed=bool(completed),
@@ -252,6 +261,16 @@ async def quest_progress(
     end: datetime,
     db: AsyncSession,
 ) -> int:
+    if metric == "reactions":
+        count = await db.scalar(
+            select(func.count()).select_from(PostReaction).where(
+                PostReaction.user_id == user_id,
+                PostReaction.created_at >= start,
+                PostReaction.created_at < end,
+            )
+        )
+        return int(count or 0)
+
     filters = [
         Task.user_id == user_id,
         Task.status == TaskStatus.DONE,
