@@ -77,10 +77,11 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
           <h1>Tasks</h1>
           <p>Create, categorize, and complete personal work.</p>
         </div>
+        <span className="header-stat"><strong>{tasks.filter((task) => task.status !== "done").length}</strong> active</span>
       </header>
       <div className="tasks-layout">
-        <section className="panel">
-          <h2>New task</h2>
+        <section className="panel task-composer">
+          <div className="section-heading"><h2>New task</h2><span>Plan the next move</span></div>
           <form className="stack" onSubmit={submitTask}>
             <input placeholder="Task title" value={title} onChange={(event) => setTitle(event.target.value)} required />
             <textarea placeholder="Description" value={description} onChange={(event) => setDescription(event.target.value)} />
@@ -101,12 +102,17 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
           </form>
         </section>
         <section className="task-list">
+          <div className="section-heading"><h2>Task library</h2><span>{tasks.length} total</span></div>
           {tasks.map((task) => (
             <article className={`task-item ${task.status}`} key={task.id}>
-              <div>
+              <span className={`task-status-dot ${task.status}`} />
+              <div className="task-item-copy">
                 <h2>{task.title}</h2>
                 <p>{task.description || "No description"}</p>
-                <span>{task.priority}</span>
+                <div className="task-meta">
+                  <span className={`priority-mark ${task.priority}`}>{task.priority}</span>
+                  <span>{task.status.replace("_", " ")}</span>
+                </div>
               </div>
               <div className="task-actions">
                 {task.status !== "done" && <button title="Complete task" onClick={() => complete(task.id)}><Check size={16} /></button>}

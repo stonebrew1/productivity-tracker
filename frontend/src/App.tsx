@@ -83,52 +83,85 @@ export function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <CheckCircle2 size={28} />
-          <span>Productivity</span>
+          <span className="brand-mark"><CheckCircle2 size={22} /></span>
+          <span className="brand-copy"><strong>Momentum</strong><small>Productivity network</small></span>
         </div>
-        <nav>
+        <nav aria-label="Primary navigation">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <button className={view === item.id ? "active" : ""} key={item.id} onClick={() => setView(item.id)}>
+              <button
+                aria-label={item.label}
+                className={view === item.id ? "active" : ""}
+                key={item.id}
+                onClick={() => setView(item.id)}
+                title={item.label}
+              >
                 <Icon size={18} />
-                {item.label}
+                <span>{item.label}</span>
               </button>
             );
           })}
         </nav>
         <div className="account">
-          <span>{user.email}</span>
-          <button onClick={handleLogout}>
+          <span className="account-avatar">{(user.display_name ?? user.email).slice(0, 1).toUpperCase()}</span>
+          <span className="account-copy"><strong>{user.display_name || user.email.split("@")[0]}</strong><small>{user.email}</small></span>
+          <button aria-label="Logout" title="Logout" onClick={handleLogout}>
             <LogOut size={16} />
-            Logout
           </button>
         </div>
       </aside>
-      <main className="content">
-        {error && <div className="alert">{error}</div>}
-        {view === "dashboard" && (
-          <DashboardPage
-            tasks={tasks}
-            categories={categories}
-            achievements={achievements}
-            stats={stats}
-            onChanged={refreshData}
-            onError={setError}
-          />
-        )}
-        {view === "tasks" && (
-          <TasksPage
-            tasks={tasks}
-            categories={categories}
-            onChanged={refreshData}
-            onError={setError}
-          />
-        )}
-        {view === "social" && <SocialPage onError={setError} />}
-        {view === "achievements" && <AchievementsPage onError={setError} />}
-        {view === "statistics" && <StatisticsPage stats={stats} />}
-      </main>
+      <div className="workspace">
+        <header className="mobile-header">
+          <div className="brand">
+            <span className="brand-mark"><CheckCircle2 size={20} /></span>
+            <span className="brand-copy"><strong>Momentum</strong><small>{navItems.find((item) => item.id === view)?.label}</small></span>
+          </div>
+          <button aria-label="Logout" title="Logout" onClick={handleLogout}><LogOut size={18} /></button>
+        </header>
+        <main className="content">
+          <div className="content-inner">
+            {error && <div className="alert">{error}</div>}
+            {view === "dashboard" && (
+              <DashboardPage
+                tasks={tasks}
+                categories={categories}
+                achievements={achievements}
+                stats={stats}
+                onChanged={refreshData}
+                onError={setError}
+              />
+            )}
+            {view === "tasks" && (
+              <TasksPage
+                tasks={tasks}
+                categories={categories}
+                onChanged={refreshData}
+                onError={setError}
+              />
+            )}
+            {view === "social" && <SocialPage onError={setError} />}
+            {view === "achievements" && <AchievementsPage onError={setError} />}
+            {view === "statistics" && <StatisticsPage stats={stats} />}
+          </div>
+        </main>
+        <nav className="mobile-nav" aria-label="Mobile navigation">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                aria-label={item.label}
+                className={view === item.id ? "active" : ""}
+                key={item.id}
+                onClick={() => setView(item.id)}
+              >
+                <Icon size={20} />
+                <span>{item.label === "Gamification" ? "Progress" : item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
     </div>
   );
 }

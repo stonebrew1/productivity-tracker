@@ -41,7 +41,9 @@ export function StatisticsPage({ stats }: { stats: Stats | null }) {
       <header className="page-header">
         <div>
           <h1>Statistics</h1>
+          <p>Understand completion patterns, workload, and consistency.</p>
         </div>
+        <span className="header-stat"><strong>{stats?.completion_rate ?? 0}%</strong> completion</span>
       </header>
       <form className="analytics-filters" onSubmit={applyFilters}>
         <label>
