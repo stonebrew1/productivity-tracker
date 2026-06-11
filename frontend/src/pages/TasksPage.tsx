@@ -1,5 +1,5 @@
-import { FormEvent, useState } from "react";
-import { Check, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Plus, Search, Trash2, X } from "lucide-react";
+import { FormEvent, useMemo, useState } from "react";
 
 import { api } from "../api/client";
 import type { Category, Task, TaskPriority } from "../types/domain";
@@ -12,6 +12,10 @@ type Props = {
 };
 
 export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [hideDone, setHideDone] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
@@ -19,19 +23,22 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
   const [newCategory, setNewCategory] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const filtered = useMemo(() => tasks.filter((task) => {
+    const text = `${task.title} ${task.description ?? ""}`.toLowerCase();
+    return text.includes(query.toLowerCase())
+      && (!categoryFilter || task.category_id === categoryFilter)
+      && (!hideDone || task.status !== "done");
+  }), [tasks, query, categoryFilter, hideDone]);
+
   async function submitTask(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     onError(null);
     try {
-      await api.createTask({
-        title,
-        description,
-        priority,
-        category_id: categoryId || null
-      });
+      await api.createTask({ title, description, priority, category_id: categoryId || null });
       setTitle("");
       setDescription("");
+      setComposerOpen(false);
       await onChanged();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Unable to create task");
@@ -52,77 +59,68 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
     }
   }
 
-  async function complete(id: string) {
+  async function mutate(action: () => Promise<unknown>) {
     try {
-      await api.completeTask(id);
+      await action();
       await onChanged();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Unable to complete task");
-    }
-  }
-
-  async function remove(id: string) {
-    try {
-      await api.deleteTask(id);
-      await onChanged();
-    } catch (err) {
-      onError(err instanceof Error ? err.message : "Unable to delete task");
+      onError(err instanceof Error ? err.message : "Unable to update task");
     }
   }
 
   return (
-    <section>
+    <section className="tasks-page">
       <header className="page-header">
-        <div>
-          <h1>Tasks</h1>
-          <p>Create, categorize, and complete personal work.</p>
-        </div>
-        <span className="header-stat"><strong>{tasks.filter((task) => task.status !== "done").length}</strong> active</span>
+        <div><h1>Tasks</h1><p>Organize the work that moves your goals forward.</p></div>
+        <button className="primary-action" onClick={() => setComposerOpen((value) => !value)}>{composerOpen ? <X size={17} /> : <Plus size={17} />}{composerOpen ? "Close" : "New task"}</button>
       </header>
-      <div className="tasks-layout">
+
+      {composerOpen && (
         <section className="panel task-composer">
-          <div className="section-heading"><h2>New task</h2><span>Plan the next move</span></div>
-          <form className="stack" onSubmit={submitTask}>
-            <input placeholder="Task title" value={title} onChange={(event) => setTitle(event.target.value)} required />
-            <textarea placeholder="Description" value={description} onChange={(event) => setDescription(event.target.value)} />
-            <select value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)}>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-            <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
-              <option value="">No category</option>
-              {categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
-            </select>
-            <button disabled={busy}><Plus size={16} /> Add task</button>
+          <div className="section-heading"><h2>Create task</h2><span>Keep the next action clear</span></div>
+          <form className="task-form" onSubmit={submitTask}>
+            <input placeholder="What needs to be done?" value={title} onChange={(event) => setTitle(event.target.value)} required />
+            <textarea placeholder="Add context or a useful definition of done" value={description} onChange={(event) => setDescription(event.target.value)} />
+            <div className="form-row">
+              <select value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)}>
+                <option value="low">Low priority</option><option value="medium">Medium priority</option><option value="high">High priority</option>
+              </select>
+              <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+                <option value="">No category</option>
+                {categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
+              </select>
+              <button disabled={busy}>{busy ? "Creating..." : "Create task"}</button>
+            </div>
           </form>
-          <form className="inline-form" onSubmit={submitCategory}>
-            <input placeholder="New category" value={newCategory} onChange={(event) => setNewCategory(event.target.value)} />
-            <button><Plus size={16} /></button>
-          </form>
+          <form className="category-form" onSubmit={submitCategory}><input placeholder="New category" value={newCategory} onChange={(event) => setNewCategory(event.target.value)} /><button title="Add category"><Plus size={16} /></button></form>
         </section>
-        <section className="task-list">
-          <div className="section-heading"><h2>Task library</h2><span>{tasks.length} total</span></div>
-          {tasks.map((task) => (
-            <article className={`task-item ${task.status}`} key={task.id}>
-              <span className={`task-status-dot ${task.status}`} />
-              <div className="task-item-copy">
-                <h2>{task.title}</h2>
-                <p>{task.description || "No description"}</p>
-                <div className="task-meta">
-                  <span className={`priority-mark ${task.priority}`}>{task.priority}</span>
-                  <span>{task.status.replace("_", " ")}</span>
-                </div>
-              </div>
-              <div className="task-actions">
-                {task.status !== "done" && <button title="Complete task" onClick={() => complete(task.id)}><Check size={16} /></button>}
-                <button title="Delete task" onClick={() => remove(task.id)}><Trash2 size={16} /></button>
-              </div>
-            </article>
-          ))}
-          {tasks.length === 0 && <p className="muted">No tasks yet.</p>}
-        </section>
+      )}
+
+      <div className="task-toolbar">
+        <label className="search-field"><Search size={17} /><input aria-label="Search tasks" placeholder="Search tasks" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+        <label className="select-field"><select aria-label="Category filter" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="">All categories</option>{categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select><ChevronDown size={15} /></label>
+        <label className="check-filter"><input type="checkbox" checked={hideDone} onChange={(event) => setHideDone(event.target.checked)} />Hide completed</label>
       </div>
+
+      <section className="task-list">
+        <div className="section-heading"><h2>All tasks</h2><span>{filtered.length} shown</span></div>
+        {filtered.map((task) => {
+          const category = categories.find((item) => item.id === task.category_id);
+          return (
+            <article className={`task-item ${task.status}`} key={task.id}>
+              <button className="complete-control" title="Complete task" disabled={task.status === "done"} onClick={() => mutate(() => api.completeTask(task.id))}><Check size={15} /></button>
+              <div className="task-item-copy">
+                <h3>{task.title}</h3>
+                {task.description && <p>{task.description}</p>}
+                <div className="task-meta">{category && <span className="category-chip">{category.name}</span>}<span className={`priority-dot ${task.priority}`} />{task.status.replace("_", " ")}</div>
+              </div>
+              <span className="xp-chip">+20 XP</span>
+              <button className="icon-button danger-button" title="Delete task" onClick={() => mutate(() => api.deleteTask(task.id))}><Trash2 size={16} /></button>
+            </article>
+          );
+        })}
+        {filtered.length === 0 && <div className="empty-state"><Check size={22} /><strong>No matching tasks</strong><p>Change the filters or create the next task.</p></div>}
+      </section>
     </section>
   );
 }

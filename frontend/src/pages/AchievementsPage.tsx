@@ -17,6 +17,7 @@ import type { BadgeProgress, GamificationDashboard, Quest } from "../types/domai
 
 export function AchievementsPage({ onError }: { onError: (message: string | null) => void }) {
   const [dashboard, setDashboard] = useState<GamificationDashboard | null>(null);
+  const [tab, setTab] = useState<"overview" | "quests" | "badges">("overview");
 
   useEffect(() => {
     api.gamification()
@@ -33,8 +34,8 @@ export function AchievementsPage({ onError }: { onError: (message: string | null
     <section>
       <header className="page-header">
         <div>
-          <h1>Gamification</h1>
-          <p>Quests and badges generated from your real task history.</p>
+          <h1>Progression</h1>
+          <p>Your consistency, quests, and earned milestones.</p>
         </div>
       </header>
 
@@ -47,7 +48,11 @@ export function AchievementsPage({ onError }: { onError: (message: string | null
         <div className="game-streak"><Flame size={20} /><strong>{game.current_streak}</strong><span>day streak</span></div>
       </section>
 
-      <section className="quest-section">
+      <nav className="page-tabs" aria-label="Progression views">
+        {(["overview", "quests", "badges"] as const).map((item) => <button className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}>{item}</button>)}
+      </nav>
+
+      {(tab === "overview" || tab === "quests") && <section className="quest-section">
         <div className="section-heading">
           <h2>Active quests</h2>
           <span>{dashboard.quests.filter((quest) => quest.completed).length} completed</span>
@@ -55,9 +60,9 @@ export function AchievementsPage({ onError }: { onError: (message: string | null
         <div className="quest-grid">
           {dashboard.quests.map((quest) => <QuestCard quest={quest} key={quest.code} />)}
         </div>
-      </section>
+      </section>}
 
-      <section>
+      {(tab === "overview" || tab === "badges") && <section>
         <div className="section-heading badge-heading">
           <h2>Badge collection</h2>
           <span>{dashboard.badges.filter((badge) => badge.unlocked).length} / {dashboard.badges.length} unlocked</span>
@@ -65,7 +70,7 @@ export function AchievementsPage({ onError }: { onError: (message: string | null
         <div className="badge-catalog">
           {dashboard.badges.map((badge) => <BadgeCard badge={badge} key={badge.code} />)}
         </div>
-      </section>
+      </section>}
     </section>
   );
 }
