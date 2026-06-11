@@ -39,6 +39,7 @@ Then open:
 - `POST/DELETE /api/social/people/{user_id}/follow`
 - `GET /api/social/feed`
 - `POST/DELETE /api/social/posts/{post_id}/reaction`
+- `GET /api/gamification`
 
 ## Notes
 
@@ -49,6 +50,8 @@ The analytics endpoint aggregates this history into daily, weekly, or monthly tr
 The default **Today** screen groups planned work into overdue, today, and next-seven-days queues. Tasks support a planned date (`scheduled_for`), effort estimate (`estimated_minutes`), and focus flag (`is_focus`), with quick creation and inline complete, start, and reschedule actions.
 
 Phase 1 of the social loop awards 20 XP for a task's first completion, with a 200 XP daily cap. Public completions create one feed post; private tasks never enter the feed. Users can edit a profile, follow demo users, and react once to visible completion posts.
+
+Phase 2 adds database-configurable XP rules, daily and weekly quests, quest bonus XP, a seven-badge catalog, locked-badge progress, streak milestones, and a three-badge profile showcase. Quest rewards are idempotent per user and period, and reset naturally at the next UTC day or week.
 
 The backend currently creates new tables automatically on startup. Moving all schema changes to Alembic migrations is the next infrastructure milestone.
 
@@ -74,3 +77,5 @@ Demo credentials:
 - Password: `password123`
 
 The seeded account follows Maya and Leo and opens with public completion posts and reactions. To demo the full loop, create a task using the globe privacy control, complete it, and open **Social** to see the new post and XP progress.
+
+For the Phase 2 demo, open **Gamification** first to see the mixed quest and badge state. Completing a public focus task advances the remaining quests, awards any earned bonus XP once, and updates the level bar and profile badge showcase.

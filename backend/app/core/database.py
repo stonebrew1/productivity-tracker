@@ -65,6 +65,39 @@ async def create_database_schema() -> None:
                         """
                     )
                 )
+                await conn.execute(text("ALTER TABLE achievements ADD COLUMN IF NOT EXISTS code VARCHAR(80)"))
+                await conn.execute(
+                    text(
+                        "ALTER TABLE achievements ADD COLUMN IF NOT EXISTS category VARCHAR(40) "
+                        "NOT NULL DEFAULT 'milestone'"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "ALTER TABLE achievements ADD COLUMN IF NOT EXISTS rarity VARCHAR(20) "
+                        "NOT NULL DEFAULT 'common'"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "ALTER TABLE achievements ADD COLUMN IF NOT EXISTS icon VARCHAR(40) "
+                        "NOT NULL DEFAULT 'medal'"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS ux_achievements_user_code "
+                        "ON achievements (user_id, code) WHERE code IS NOT NULL"
+                    )
+                )
+                await conn.execute(text("ALTER TABLE xp_awards ALTER COLUMN task_id DROP NOT NULL"))
+                await conn.execute(text("ALTER TABLE xp_awards ADD COLUMN IF NOT EXISTS source_key VARCHAR(180)"))
+                await conn.execute(
+                    text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS ux_xp_awards_source_key "
+                        "ON xp_awards (source_key) WHERE source_key IS NOT NULL"
+                    )
+                )
             return
         except Exception as exc:
             last_error = exc

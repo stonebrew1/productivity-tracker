@@ -6,8 +6,12 @@ from pydantic import BaseModel, ConfigDict
 
 class AchievementRead(BaseModel):
     id: UUID
+    code: str | None
     title: str
     description: str
+    category: str
+    rarity: str
+    icon: str
     awarded_at: datetime
     task_id: UUID | None
 

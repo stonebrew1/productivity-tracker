@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,6 +31,7 @@ class XpAward(Base):
     __tablename__ = "xp_awards"
     __table_args__ = (
         UniqueConstraint("task_id", name="uq_xp_awards_task"),
+        UniqueConstraint("source_key", name="uq_xp_awards_source"),
         Index("ix_xp_awards_user_awarded", "user_id", "awarded_at"),
     )
 
@@ -40,12 +41,40 @@ class XpAward(Base):
     awarded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-    task_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True))
+    task_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
+    source_key: Mapped[str | None] = mapped_column(String(180), nullable=True)
     user_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
 
     user = relationship("User", back_populates="xp_awards")
+
+
+class GamificationRule(Base):
+    __tablename__ = "gamification_rules"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    value: Mapped[dict] = mapped_column(JSON)
+    is_active: Mapped[bool] = mapped_column(default=True, server_default="true")
+
+
+class QuestCompletion(Base):
+    __tablename__ = "quest_completions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "quest_code", "period_start", name="uq_quest_completion_period"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    quest_code: Mapped[str] = mapped_column(String(80))
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    xp_awarded: Mapped[int] = mapped_column(Integer)
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
 
 
 class ActivityPost(Base):

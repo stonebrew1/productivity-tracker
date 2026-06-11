@@ -75,7 +75,7 @@ export function App() {
     { id: "dashboard" as View, label: "Today", icon: CalendarDays },
     { id: "tasks" as View, label: "Tasks", icon: ListTodo },
     { id: "social" as View, label: "Social", icon: Users },
-    { id: "achievements" as View, label: "Achievements", icon: Medal },
+    { id: "achievements" as View, label: "Gamification", icon: Medal },
     { id: "statistics" as View, label: "Statistics", icon: BarChart3 }
   ];
 
@@ -126,7 +126,7 @@ export function App() {
           />
         )}
         {view === "social" && <SocialPage onError={setError} />}
-        {view === "achievements" && <AchievementsPage achievements={achievements} />}
+        {view === "achievements" && <AchievementsPage onError={setError} />}
         {view === "statistics" && <StatisticsPage stats={stats} />}
       </main>
     </div>
