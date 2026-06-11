@@ -112,7 +112,21 @@ export type Person = {
   email: string;
   avatar_url: string | null;
   level: number;
+  current_streak: number;
+  last_active_at: string | null;
   is_following: boolean;
+};
+
+export type LeaderboardEntry = {
+  rank: number;
+  user_id: string;
+  display_name: string | null;
+  email: string;
+  avatar_url: string | null;
+  level: number;
+  current_streak: number;
+  weekly_xp: number;
+  is_current_user: boolean;
 };
 
 export type FeedPost = {

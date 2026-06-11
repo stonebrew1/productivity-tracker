@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from app.services.gamification_service import gamification_snapshot, level_from_xp, quest_period
+from app.services.gamification_service import QUEST_CATALOG, gamification_snapshot, level_from_xp, quest_period
 
 
 def test_level_progression_uses_fixed_hundred_xp_levels() -> None:
@@ -30,3 +30,10 @@ def test_quest_periods_expire_at_next_day_or_week() -> None:
     assert daily_end.isoformat() == "2026-06-12T00:00:00+00:00"
     assert weekly_start.isoformat() == "2026-06-08T00:00:00+00:00"
     assert weekly_end.isoformat() == "2026-06-15T00:00:00+00:00"
+
+
+def test_social_encouragement_quest_is_part_of_catalog() -> None:
+    quest = next(item for item in QUEST_CATALOG if item["code"] == "weekly_encourage_3")
+
+    assert quest["metric"] == "reactions"
+    assert quest["target"] == 3

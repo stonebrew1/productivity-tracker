@@ -1,8 +1,8 @@
-import { CheckCircle2, Heart, Medal, UserMinus, UserPlus } from "lucide-react";
+import { CheckCircle2, Crown, Flame, Heart, Medal, Sparkles, UserMinus, UserPlus, Zap } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { FeedPost, GamificationDashboard, Person, Profile } from "../types/domain";
+import type { FeedPost, GamificationDashboard, LeaderboardEntry, Person, Profile } from "../types/domain";
 
 type Props = {
   onError: (message: string | null) => void;
@@ -13,19 +13,22 @@ export function SocialPage({ onError }: Props) {
   const [people, setPeople] = useState<Person[]>([]);
   const [feed, setFeed] = useState<FeedPost[]>([]);
   const [game, setGame] = useState<GamificationDashboard | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function loadSocial() {
-    const [nextProfile, nextPeople, nextFeed, nextGame] = await Promise.all([
+    const [nextProfile, nextPeople, nextFeed, nextGame, nextLeaderboard] = await Promise.all([
       api.profile(),
       api.people(),
       api.feed(),
-      api.gamification()
+      api.gamification(),
+      api.leaderboard()
     ]);
     setProfile(nextProfile);
     setPeople(nextPeople);
     setFeed(nextFeed);
     setGame(nextGame);
+    setLeaderboard(nextLeaderboard);
   }
 
   useEffect(() => {
@@ -47,6 +50,11 @@ export function SocialPage({ onError }: Props) {
   if (loading || !profile) return <p className="muted">Loading social workspace...</p>;
 
   const progress = Math.round((profile.gamification.xp_into_level / profile.gamification.xp_for_next_level) * 100);
+  const socialQuest = game?.quests.find((quest) => quest.code === "weekly_encourage_3");
+  const activePeople = people
+    .filter((person) => person.is_following && person.last_active_at)
+    .sort((left, right) => new Date(right.last_active_at!).getTime() - new Date(left.last_active_at!).getTime())
+    .slice(0, 4);
 
   return (
     <section>
@@ -82,6 +90,21 @@ export function SocialPage({ onError }: Props) {
 
       <div className="social-layout">
         <main className="feed-column">
+          {socialQuest && (
+            <section className={`social-quest ${socialQuest.completed ? "completed" : ""}`}>
+              <span className="social-quest-icon"><Sparkles size={18} /></span>
+              <div>
+                <small>Weekly social quest</small>
+                <strong>{socialQuest.title}</strong>
+                <p>{socialQuest.description}</p>
+              </div>
+              <div className="social-quest-progress">
+                <span>{socialQuest.progress} / {socialQuest.target}</span>
+                <i><b style={{ width: `${Math.round((socialQuest.progress / socialQuest.target) * 100)}%` }} /></i>
+                <small>+{socialQuest.reward_xp} XP</small>
+              </div>
+            </section>
+          )}
           <div className="section-heading">
             <h2>Activity feed</h2>
             <span>{feed.length} updates</span>
@@ -106,7 +129,8 @@ export function SocialPage({ onError }: Props) {
               </div>
               <button
                 className={post.reacted_by_me ? "reaction active" : "reaction"}
-                title={post.reacted_by_me ? "Remove encouragement" : "Encourage"}
+                disabled={post.author.id === profile.id}
+                title={post.author.id === profile.id ? "This is your update" : post.reacted_by_me ? "Remove encouragement" : "Encourage"}
                 onClick={() => mutate(() => post.reacted_by_me ? api.unreact(post.id) : api.react(post.id))}
               >
                 <Heart size={16} />
@@ -117,6 +141,19 @@ export function SocialPage({ onError }: Props) {
         </main>
 
         <aside className="social-aside">
+          <Leaderboard entries={leaderboard} />
+          <section className="active-friends">
+            <div className="section-heading"><h2>Active connections</h2><span>Recent progress</span></div>
+            {activePeople.map((person) => (
+              <div className="active-person" key={person.id}>
+                <span className="presence-dot" />
+                <Avatar name={person.display_name ?? person.email} />
+                <div><strong>{person.display_name || person.email.split("@")[0]}</strong><span>{activeLabel(person.last_active_at!)}</span></div>
+                <small><Flame size={12} />{person.current_streak}</small>
+              </div>
+            ))}
+            {activePeople.length === 0 && <p className="muted compact-copy">Follow people to see their recent momentum.</p>}
+          </section>
           <ProfileEditor profile={profile} onSave={(payload) => mutate(() => api.updateProfile(payload))} />
           <section className="people-section">
             <div className="section-heading">
@@ -139,6 +176,22 @@ export function SocialPage({ onError }: Props) {
           </section>
         </aside>
       </div>
+    </section>
+  );
+}
+
+function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
+  return (
+    <section className="leaderboard">
+      <div className="section-heading"><h2>Weekly leaderboard</h2><span>Resets Monday</span></div>
+      {entries.map((entry) => (
+        <div className={`leaderboard-row ${entry.is_current_user ? "current" : ""}`} key={entry.user_id}>
+          <span className="leaderboard-rank">{entry.rank === 1 ? <Crown size={15} /> : entry.rank}</span>
+          <Avatar name={entry.display_name ?? entry.email} />
+          <div><strong>{entry.display_name || entry.email.split("@")[0]}{entry.is_current_user ? " (you)" : ""}</strong><span>Level {entry.level}</span></div>
+          <b><Zap size={12} />{entry.weekly_xp}</b>
+        </div>
+      ))}
     </section>
   );
 }
@@ -179,4 +232,12 @@ function relativeTime(value: string) {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
+}
+
+function activeLabel(value: string) {
+  const elapsed = Date.now() - new Date(value).getTime();
+  const hours = Math.max(0, Math.floor(elapsed / 3_600_000));
+  if (hours < 1) return "Active this hour";
+  if (hours < 24) return `Active ${hours}h ago`;
+  return `Active ${Math.floor(hours / 24)}d ago`;
 }

@@ -225,6 +225,19 @@ p { color: var(--muted); line-height: 1.6; }
 .profile-showcase div { display: flex; align-items: center; gap: 5px; border-radius: 6px; background: var(--surface-2); padding: 7px 9px; font-size: .7rem; white-space: nowrap; }
 .profile-showcase svg { color: var(--amber); }
 .social-layout { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(250px, .85fr); gap: 24px; }
+.social-quest { display: grid; grid-template-columns: 38px 1fr minmax(110px, .32fr); align-items: center; gap: 13px; border: 1px solid rgba(124,58,237,.34); border-radius: 8px; background: var(--violet-dim); padding: 14px; margin-bottom: 22px; }
+.social-quest.completed { border-color: rgba(16,185,129,.32); background: rgba(16,185,129,.08); }
+.social-quest-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 8px; background: rgba(124,58,237,.22); color: #a78bfa; }
+.social-quest.completed .social-quest-icon { background: rgba(16,185,129,.15); color: var(--emerald); }
+.social-quest > div:nth-child(2) { display: flex; min-width: 0; flex-direction: column; }
+.social-quest small { color: var(--muted); font-size: .62rem; }
+.social-quest strong { margin: 2px 0; font-size: .8rem; }
+.social-quest p { overflow: hidden; margin: 0; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+.social-quest-progress { display: grid; gap: 5px; text-align: right; }
+.social-quest-progress > span { color: #c4b5fd; font-size: .7rem; font-weight: 700; }
+.social-quest-progress > i { display: block; height: 5px; overflow: hidden; border-radius: 999px; background: rgba(8,8,15,.6); }
+.social-quest-progress > i b { display: block; height: 100%; border-radius: inherit; background: var(--violet-light); }
+.social-quest.completed .social-quest-progress > i b { background: var(--emerald); }
 .feed-post { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); padding: 16px; margin-bottom: 10px; }
 .feed-copy > div { display: flex; align-items: center; gap: 8px; font-size: .75rem; }
 .feed-copy > div span, .feed-copy time { color: var(--muted); font-size: .67rem; }
@@ -232,8 +245,9 @@ p { color: var(--muted); line-height: 1.6; }
 .feed-copy small { color: #a78bfa; font-weight: 700; }
 .reaction { align-self: end; display: flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--muted); }
 .reaction.active { color: var(--pink); }
+.reaction:disabled { color: #3e3e55; }
 .social-aside { display: grid; align-content: start; gap: 14px; }
-.profile-editor, .people-section { border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); padding: 16px; }
+.profile-editor, .people-section, .leaderboard, .active-friends { border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); padding: 16px; }
 .profile-editor { display: grid; gap: 11px; }
 .profile-editor label { display: grid; gap: 6px; color: var(--muted); font-size: .7rem; }
 .person-row { display: grid; grid-template-columns: 34px 1fr 34px; align-items: center; gap: 9px; padding: 9px 0; border-top: 1px solid var(--border); }
@@ -242,6 +256,23 @@ p { color: var(--muted); line-height: 1.6; }
 .person-row strong { overflow: hidden; font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
 .person-row span { color: var(--muted); font-size: .65rem; }
 .person-row button { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--border); border-radius: 7px; background: transparent; color: #a78bfa; }
+.leaderboard-row { display: grid; grid-template-columns: 22px 32px minmax(0, 1fr) auto; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding: 10px 5px; }
+.leaderboard-row.current { margin: 0 -5px; border-color: rgba(124,58,237,.2); border-radius: 6px; background: var(--violet-dim); padding-inline: 10px; }
+.leaderboard-rank { display: grid; place-items: center; color: var(--muted); font-size: .7rem; font-weight: 700; }
+.leaderboard-rank svg { color: var(--amber); }
+.leaderboard-row .avatar { width: 32px; height: 32px; font-size: .7rem; }
+.leaderboard-row > div { display: flex; min-width: 0; flex-direction: column; }
+.leaderboard-row strong { overflow: hidden; font-size: .71rem; text-overflow: ellipsis; white-space: nowrap; }
+.leaderboard-row div span { color: var(--muted); font-size: .62rem; }
+.leaderboard-row > b { display: flex; align-items: center; gap: 3px; color: #a78bfa; font-size: .68rem; }
+.active-person { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 9px; border-top: 1px solid var(--border); padding: 10px 2px; }
+.active-person .avatar { width: 32px; height: 32px; font-size: .7rem; }
+.active-person > div { display: flex; min-width: 0; flex-direction: column; }
+.active-person strong { overflow: hidden; font-size: .71rem; text-overflow: ellipsis; white-space: nowrap; }
+.active-person div span { color: var(--muted); font-size: .61rem; }
+.active-person > small { display: flex; align-items: center; gap: 3px; color: var(--amber); font-size: .63rem; }
+.presence-dot { position: absolute; z-index: 2; left: 25px; bottom: 9px; width: 8px; height: 8px; border: 2px solid var(--surface-1); border-radius: 50%; background: var(--emerald); }
+.compact-copy { margin: 0; font-size: .7rem; }
 .social-empty { display: grid; justify-items: center; border: 1px dashed var(--border); border-radius: 8px; padding: 35px; text-align: center; }
 .social-empty p { margin: 5px 0 0; font-size: .78rem; }
 
@@ -357,6 +388,7 @@ p { color: var(--muted); line-height: 1.6; }
   .xp-chip { display: none; }
   .profile-strip { grid-template-columns: 44px 1fr; }.profile-strip > .avatar { width: 44px; height: 44px; }.streak-stat { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 6px; text-align: left; }
   .feed-post { grid-template-columns: 34px 1fr; padding: 13px; }.feed-post > .avatar { width: 34px; height: 34px; }.reaction { grid-column: 2; justify-self: start; }
+  .social-quest { grid-template-columns: 34px 1fr; }.social-quest-progress { grid-column: 2; grid-template-columns: auto 1fr auto; align-items: center; text-align: left; }
   .game-progress { grid-template-columns: 1fr; gap: 18px; text-align: center; }.level-mark { margin: auto; }.game-progress-copy > div:first-child { flex-direction: column; gap: 4px; }.game-streak { grid-column: auto; justify-content: center; }
   .page-tabs button { flex: 1; padding-inline: 5px; }
   .chart-legend { justify-content: flex-start; margin: 0 0 14px; }
