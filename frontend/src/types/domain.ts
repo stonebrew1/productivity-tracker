@@ -20,6 +20,9 @@ export type Task = {
   priority: TaskPriority;
   status: TaskStatus;
   deadline: string | null;
+  scheduled_for: string | null;
+  estimated_minutes: number | null;
+  is_focus: boolean;
   completed_at: string | null;
   category_id: string | null;
   parent_id: string | null;

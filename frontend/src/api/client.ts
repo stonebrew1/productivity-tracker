@@ -57,6 +57,9 @@ export const api = {
     description?: string;
     priority: string;
     deadline?: string | null;
+    scheduled_for?: string | null;
+    estimated_minutes?: number | null;
+    is_focus?: boolean;
     category_id?: string | null;
     parent_id?: string | null;
   }) => request<Task>("/tasks", { method: "POST", body: JSON.stringify(payload) }),

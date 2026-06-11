@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from sqlalchemy import delete, select
 
-from app.core.database import AsyncSessionLocal
+from app.core.database import AsyncSessionLocal, create_database_schema
 from app.core.security import hash_password
 from app.models.achievement import Achievement
 from app.models.category import Category
@@ -39,12 +39,12 @@ TASK_BLUEPRINTS = [
 ]
 
 OPEN_TASKS = [
-    ("Prepare project defense slides", "Study", TaskPriority.HIGH, 5, TaskStatus.IN_PROGRESS),
-    ("Implement CSV analytics export", "Work", TaskPriority.MEDIUM, 8, TaskStatus.TODO),
-    ("Schedule weekly running plan", "Health", TaskPriority.LOW, 4, TaskStatus.TODO),
-    ("Renew cloud hosting subscription", "Personal", TaskPriority.MEDIUM, 2, TaskStatus.IN_PROGRESS),
-    ("Research notification queues", "Work", TaskPriority.LOW, 10, TaskStatus.TODO),
-    ("Outline usability testing plan", "Study", TaskPriority.MEDIUM, 7, TaskStatus.TODO),
+    ("Prepare project defense slides", "Study", TaskPriority.HIGH, 5, 0, 90, True, TaskStatus.IN_PROGRESS),
+    ("Implement CSV analytics export", "Work", TaskPriority.MEDIUM, 8, 1, 60, True, TaskStatus.TODO),
+    ("Schedule weekly running plan", "Health", TaskPriority.LOW, 4, 0, 25, False, TaskStatus.TODO),
+    ("Renew cloud hosting subscription", "Personal", TaskPriority.MEDIUM, 2, -2, 15, False, TaskStatus.IN_PROGRESS),
+    ("Research notification queues", "Work", TaskPriority.LOW, 10, 3, 45, False, TaskStatus.TODO),
+    ("Outline usability testing plan", "Study", TaskPriority.MEDIUM, 7, -1, 50, True, TaskStatus.TODO),
 ]
 
 
@@ -54,6 +54,9 @@ def event_snapshot(
     category_id: str,
     deadline: datetime | None,
     completed_at: datetime | None,
+    scheduled_for: datetime | None = None,
+    estimated_minutes: int | None = None,
+    is_focus: bool = False,
 ) -> dict:
     return {
         "status": status.value,
@@ -61,11 +64,15 @@ def event_snapshot(
         "category_id": category_id,
         "deadline": deadline.isoformat() if deadline else None,
         "completed_at": completed_at.isoformat() if completed_at else None,
+        "scheduled_for": scheduled_for.isoformat() if scheduled_for else None,
+        "estimated_minutes": estimated_minutes,
+        "is_focus": is_focus,
     }
 
 
 async def seed_demo() -> None:
     now = datetime.now(timezone.utc).replace(microsecond=0)
+    await create_database_schema()
 
     async with AsyncSessionLocal() as db:
         user = await db.scalar(select(User).where(User.email == DEMO_EMAIL))
@@ -152,9 +159,19 @@ async def seed_demo() -> None:
                 )
             )
 
-        for index, (title, category_name, priority, due_in_days, task_status) in enumerate(OPEN_TASKS):
+        for index, (
+            title,
+            category_name,
+            priority,
+            due_in_days,
+            schedule_offset,
+            estimated_minutes,
+            is_focus,
+            task_status,
+        ) in enumerate(OPEN_TASKS):
             created_at = now - timedelta(days=6 - index, hours=index)
             deadline = now + timedelta(days=due_in_days)
+            scheduled_for = now.replace(hour=9 + index, minute=0, second=0) + timedelta(days=schedule_offset)
             category = categories[category_name]
             task = Task(
                 title=title,
@@ -162,6 +179,9 @@ async def seed_demo() -> None:
                 priority=priority,
                 status=task_status,
                 deadline=deadline,
+                scheduled_for=scheduled_for,
+                estimated_minutes=estimated_minutes,
+                is_focus=is_focus,
                 user_id=user.id,
                 category_id=category.id,
             )
@@ -181,6 +201,9 @@ async def seed_demo() -> None:
                             str(category.id),
                             deadline,
                             None,
+                            scheduled_for,
+                            estimated_minutes,
+                            is_focus,
                         )
                     },
                 )
@@ -204,6 +227,9 @@ async def seed_demo() -> None:
                                 str(category.id),
                                 deadline,
                                 None,
+                                scheduled_for,
+                                estimated_minutes,
+                                is_focus,
                             ),
                         },
                     )
