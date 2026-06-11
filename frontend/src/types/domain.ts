@@ -42,6 +42,30 @@ export type Stats = {
   by_status: Record<string, number>;
 };
 
+export type AnalyticsInterval = "day" | "week" | "month";
+
+export type TrendPoint = {
+  period: string;
+  created: number;
+  completed: number;
+  deleted: number;
+};
+
+export type AnalyticsReport = {
+  date_from: string;
+  date_to: string;
+  interval: AnalyticsInterval;
+  created_tasks: number;
+  completed_tasks: number;
+  deleted_tasks: number;
+  on_time_completed: number;
+  overdue_completed: number;
+  without_deadline_completed: number;
+  by_priority: Record<string, number>;
+  by_category: Record<string, number>;
+  trend: TrendPoint[];
+};
+
 export type TokenResponse = {
   access_token: string;
   refresh_token: string;

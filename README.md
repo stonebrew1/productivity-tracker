@@ -1,6 +1,6 @@
 # Productivity Tracker
 
-Full-stack MVP for a personal productivity system with tasks, categories, achievements, statistics, JWT auth, FastAPI, React, and PostgreSQL.
+Full-stack personal productivity system with tasks, categories, achievements, statistics, task activity history, JWT auth, FastAPI, React, and PostgreSQL.
 
 ## Project Structure
 
@@ -29,10 +29,37 @@ Then open:
 - `GET /api/auth/me`
 - `GET/POST /api/categories`
 - `GET/POST /api/tasks`
+- `GET /api/tasks/history`
 - `POST /api/tasks/{task_id}/complete`
 - `GET /api/achievements`
 - `GET /api/statistics`
+- `GET /api/statistics/analytics`
 
 ## Notes
 
-The backend creates tables automatically on startup for the MVP. Alembic is included as a dependency so migrations can be added when the schema stabilizes.
+Task create, update, completion, status-change, and deletion events are stored in `task_events`. History remains available after task deletion and can be filtered by task, event type, and date range.
+
+The analytics endpoint aggregates this history into daily, weekly, or monthly trends. It reports created, completed, and deleted tasks; on-time and overdue completion; and completed-task breakdowns by priority and category. The Statistics page exposes date and interval filters for the same report.
+
+The backend currently creates new tables automatically on startup. Moving all schema changes to Alembic migrations is the next infrastructure milestone.
+
+## Backend Tests
+
+Inside the backend container:
+
+```bash
+pytest
+```
+
+## Demo Data
+
+Populate or reset only the `demo@example.com` account:
+
+```bash
+docker compose run --rm backend python -m app.scripts.seed_demo
+```
+
+Demo credentials:
+
+- Email: `demo@example.com`
+- Password: `password123`

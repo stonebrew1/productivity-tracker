@@ -9,3 +9,4 @@ node_modules/
 dist/
 .vite/
 postgres_data/
+work/

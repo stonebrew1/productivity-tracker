@@ -1,4 +1,13 @@
-import type { Achievement, Category, Stats, Task, TokenResponse, User } from "../types/domain";
+import type {
+  Achievement,
+  AnalyticsInterval,
+  AnalyticsReport,
+  Category,
+  Stats,
+  Task,
+  TokenResponse,
+  User
+} from "../types/domain";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
 const ACCESS_TOKEN_KEY = "productivity_access_token";
@@ -57,5 +66,13 @@ export const api = {
     request<{ task: Task; achievements: Achievement[] }>(`/tasks/${id}/complete`, { method: "POST" }),
   deleteTask: (id: string) => request<void>(`/tasks/${id}`, { method: "DELETE" }),
   achievements: () => request<Achievement[]>("/achievements"),
-  statistics: () => request<Stats>("/statistics")
+  statistics: () => request<Stats>("/statistics"),
+  analytics: (dateFrom: string, dateTo: string, interval: AnalyticsInterval) => {
+    const params = new URLSearchParams({
+      date_from: dateFrom,
+      date_to: dateTo,
+      interval
+    });
+    return request<AnalyticsReport>(`/statistics/analytics?${params}`);
+  }
 };
