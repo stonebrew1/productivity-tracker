@@ -50,3 +50,16 @@ Inside the backend container:
 ```bash
 pytest
 ```
+
+## Demo Data
+
+Populate or reset only the `demo@example.com` account:
+
+```bash
+docker compose run --rm backend python -m app.scripts.seed_demo
+```
+
+Demo credentials:
+
+- Email: `demo@example.com`
+- Password: `password123`
