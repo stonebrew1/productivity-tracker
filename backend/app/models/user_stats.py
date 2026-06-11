@@ -14,6 +14,7 @@ class UserStats(Base):
     total_tasks: Mapped[int] = mapped_column(Integer, default=0)
     completed_tasks: Mapped[int] = mapped_column(Integer, default=0)
     current_streak: Mapped[int] = mapped_column(Integer, default=0)
+    xp_total: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True)
 
     user = relationship("User", back_populates="stats")

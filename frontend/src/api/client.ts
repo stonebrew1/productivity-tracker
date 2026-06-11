@@ -3,6 +3,9 @@ import type {
   AnalyticsInterval,
   AnalyticsReport,
   Category,
+  FeedPost,
+  Person,
+  Profile,
   Stats,
   Task,
   TokenResponse,
@@ -60,16 +63,26 @@ export const api = {
     scheduled_for?: string | null;
     estimated_minutes?: number | null;
     is_focus?: boolean;
+    visibility?: "private" | "public";
     category_id?: string | null;
     parent_id?: string | null;
   }) => request<Task>("/tasks", { method: "POST", body: JSON.stringify(payload) }),
   updateTask: (id: string, payload: Partial<Task>) =>
     request<Task>(`/tasks/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   completeTask: (id: string) =>
-    request<{ task: Task; achievements: Achievement[] }>(`/tasks/${id}/complete`, { method: "POST" }),
+    request<{ task: Task; achievements: Achievement[]; xp_awarded: number }>(`/tasks/${id}/complete`, { method: "POST" }),
   deleteTask: (id: string) => request<void>(`/tasks/${id}`, { method: "DELETE" }),
   achievements: () => request<Achievement[]>("/achievements"),
   statistics: () => request<Stats>("/statistics"),
+  profile: () => request<Profile>("/social/profile"),
+  updateProfile: (payload: { display_name?: string | null; bio?: string | null; avatar_url?: string | null }) =>
+    request<Profile>("/social/profile", { method: "PUT", body: JSON.stringify(payload) }),
+  people: () => request<Person[]>("/social/people"),
+  follow: (id: string) => request<void>(`/social/people/${id}/follow`, { method: "POST" }),
+  unfollow: (id: string) => request<void>(`/social/people/${id}/follow`, { method: "DELETE" }),
+  feed: () => request<FeedPost[]>("/social/feed"),
+  react: (id: string) => request<void>(`/social/posts/${id}/reaction`, { method: "POST" }),
+  unreact: (id: string) => request<void>(`/social/posts/${id}/reaction`, { method: "DELETE" }),
   analytics: (dateFrom: string, dateTo: string, interval: AnalyticsInterval) => {
     const params = new URLSearchParams({
       date_from: dateFrom,

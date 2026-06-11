@@ -38,6 +38,33 @@ async def create_database_schema() -> None:
                 await conn.execute(
                     text("CREATE INDEX IF NOT EXISTS ix_tasks_scheduled_for ON tasks (scheduled_for)")
                 )
+                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(80)"))
+                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT"))
+                await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)"))
+                await conn.execute(
+                    text("ALTER TABLE user_stats ADD COLUMN IF NOT EXISTS xp_total INTEGER NOT NULL DEFAULT 0")
+                )
+                await conn.execute(
+                    text(
+                        """
+                        DO $$
+                        BEGIN
+                            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'taskvisibility') THEN
+                                CREATE TYPE taskvisibility AS ENUM ('PRIVATE', 'PUBLIC');
+                            END IF;
+                        END
+                        $$;
+                        """
+                    )
+                )
+                await conn.execute(
+                    text(
+                        """
+                        ALTER TABLE tasks
+                        ADD COLUMN IF NOT EXISTS visibility taskvisibility NOT NULL DEFAULT 'PRIVATE'
+                        """
+                    )
+                )
             return
         except Exception as exc:
             last_error = exc

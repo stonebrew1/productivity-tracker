@@ -8,6 +8,10 @@ class StatsRead(BaseModel):
     total_tasks: int
     completed_tasks: int
     current_streak: int
+    xp_total: int
+    level: int
+    xp_into_level: int
+    xp_for_next_level: int
     completion_rate: float
     by_priority: dict[str, int]
     by_status: dict[str, int]

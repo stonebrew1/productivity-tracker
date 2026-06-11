@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.task import TaskPriority, TaskStatus
+from app.models.task import TaskPriority, TaskStatus, TaskVisibility
 from app.schemas.achievement import AchievementRead
 
 
@@ -15,6 +15,7 @@ class TaskCreate(BaseModel):
     scheduled_for: datetime | None = None
     estimated_minutes: int | None = Field(default=None, ge=5, le=1440)
     is_focus: bool = False
+    visibility: TaskVisibility = TaskVisibility.PRIVATE
     category_id: UUID | None = None
     parent_id: UUID | None = None
 
@@ -28,6 +29,7 @@ class TaskUpdate(BaseModel):
     scheduled_for: datetime | None = None
     estimated_minutes: int | None = Field(default=None, ge=5, le=1440)
     is_focus: bool | None = None
+    visibility: TaskVisibility | None = None
     category_id: UUID | None = None
     parent_id: UUID | None = None
 
@@ -42,6 +44,7 @@ class TaskRead(BaseModel):
     scheduled_for: datetime | None
     estimated_minutes: int | None
     is_focus: bool
+    visibility: TaskVisibility
     completed_at: datetime | None
     category_id: UUID | None
     parent_id: UUID | None
@@ -52,3 +55,4 @@ class TaskRead(BaseModel):
 class TaskCompleteResponse(BaseModel):
     task: TaskRead
     achievements: list[AchievementRead]
+    xp_awarded: int = 0

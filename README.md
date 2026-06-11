@@ -1,6 +1,6 @@
 # Productivity Tracker
 
-Full-stack personal productivity system with tasks, categories, achievements, statistics, task activity history, JWT auth, FastAPI, React, and PostgreSQL.
+Full-stack social productivity system with tasks, profiles, XP progression, private sharing controls, follows, activity feeds, reactions, achievements, analytics, JWT auth, FastAPI, React, and PostgreSQL.
 
 ## Project Structure
 
@@ -34,6 +34,11 @@ Then open:
 - `GET /api/achievements`
 - `GET /api/statistics`
 - `GET /api/statistics/analytics`
+- `GET/PUT /api/social/profile`
+- `GET /api/social/people`
+- `POST/DELETE /api/social/people/{user_id}/follow`
+- `GET /api/social/feed`
+- `POST/DELETE /api/social/posts/{post_id}/reaction`
 
 ## Notes
 
@@ -42,6 +47,8 @@ Task create, update, completion, status-change, and deletion events are stored i
 The analytics endpoint aggregates this history into daily, weekly, or monthly trends. It reports created, completed, and deleted tasks; on-time and overdue completion; and completed-task breakdowns by priority and category. The Statistics page exposes date and interval filters for the same report.
 
 The default **Today** screen groups planned work into overdue, today, and next-seven-days queues. Tasks support a planned date (`scheduled_for`), effort estimate (`estimated_minutes`), and focus flag (`is_focus`), with quick creation and inline complete, start, and reschedule actions.
+
+Phase 1 of the social loop awards 20 XP for a task's first completion, with a 200 XP daily cap. Public completions create one feed post; private tasks never enter the feed. Users can edit a profile, follow demo users, and react once to visible completion posts.
 
 The backend currently creates new tables automatically on startup. Moving all schema changes to Alembic migrations is the next infrastructure milestone.
 
@@ -55,7 +62,7 @@ pytest
 
 ## Demo Data
 
-Populate or reset only the `demo@example.com` account:
+Populate or reset the primary demo account and two connected social accounts:
 
 ```bash
 docker compose run --rm backend python -m app.scripts.seed_demo
@@ -65,3 +72,5 @@ Demo credentials:
 
 - Email: `demo@example.com`
 - Password: `password123`
+
+The seeded account follows Maya and Leo and opens with public completion posts and reactions. To demo the full loop, create a task using the globe privacy control, complete it, and open **Social** to see the new post and XP progress.
