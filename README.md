@@ -33,10 +33,13 @@ Then open:
 - `POST /api/tasks/{task_id}/complete`
 - `GET /api/achievements`
 - `GET /api/statistics`
+- `GET /api/statistics/analytics`
 
 ## Notes
 
 Task create, update, completion, status-change, and deletion events are stored in `task_events`. History remains available after task deletion and can be filtered by task, event type, and date range.
+
+The analytics endpoint aggregates this history into daily, weekly, or monthly trends. It reports created, completed, and deleted tasks; on-time and overdue completion; and completed-task breakdowns by priority and category. The Statistics page exposes date and interval filters for the same report.
 
 The backend currently creates new tables automatically on startup. Moving all schema changes to Alembic migrations is the next infrastructure milestone.
 

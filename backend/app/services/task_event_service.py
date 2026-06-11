@@ -9,6 +9,15 @@ from app.models.task import Task
 from app.models.task_event import TaskEvent, TaskEventType
 
 
+ANALYTICS_SNAPSHOT_FIELDS = {
+    "status",
+    "priority",
+    "category_id",
+    "deadline",
+    "completed_at",
+}
+
+
 def serialize_event_value(value: Any) -> Any:
     if isinstance(value, (datetime, date)):
         return value.isoformat()
@@ -37,11 +46,16 @@ async def record_task_event(
     event_type: TaskEventType,
     changes: dict | None = None,
 ) -> TaskEvent:
+    event_changes = dict(changes or {})
+    event_changes["_snapshot"] = {
+        field: serialize_event_value(value)
+        for field, value in task_snapshot(task, ANALYTICS_SNAPSHOT_FIELDS).items()
+    }
     event = TaskEvent(
         event_type=event_type,
         task_id=task.id,
         task_title=task.title,
-        changes=changes or {},
+        changes=event_changes,
         user_id=task.user_id,
     )
     db.add(event)
