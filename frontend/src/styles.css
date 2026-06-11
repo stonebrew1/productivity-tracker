@@ -24,6 +24,20 @@
 * { box-sizing: border-box; }
 html { background: var(--bg); }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--bg); color: var(--text); }
+* {
+  scrollbar-color: #454563 var(--surface-2);
+  scrollbar-width: thin;
+}
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: var(--surface-2); }
+*::-webkit-scrollbar-thumb {
+  border: 2px solid var(--surface-2);
+  border-radius: 999px;
+  background: #454563;
+}
+*::-webkit-scrollbar-thumb:hover { background: #5d5d7d; }
+*::-webkit-scrollbar-corner { background: var(--surface-2); }
+*::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .55; }
@@ -169,7 +183,7 @@ p { color: var(--muted); line-height: 1.6; }
 .today-task-actions button { display: grid; width: 30px; height: 30px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted); }
 .today-task-actions button:hover { background: var(--surface-3); color: var(--text); }
 .today-aside { display: grid; align-content: start; gap: 14px; }
-.latest-achievement svg { color: var(--amber); }
+.latest-achievement svg { margin-right: 8px; color: var(--amber); vertical-align: -4px; }
 .latest-achievement p { margin: 8px 0 0; font-size: .77rem; }
 .workspace-facts { display: grid; gap: 12px; }
 .workspace-facts span { color: var(--muted); font-size: .75rem; }
@@ -266,7 +280,11 @@ p { color: var(--muted); line-height: 1.6; }
 .chart-legend { display: flex; gap: 15px; justify-content: flex-end; margin-top: -30px; margin-bottom: 20px; color: var(--muted); font-size: .67rem; }
 .chart-legend span { display: flex; align-items: center; gap: 5px; }.chart-legend i { width: 7px; height: 7px; border-radius: 50%; }
 .created { background: var(--blue); }.completed { background: var(--violet-light); }.deleted { background: var(--pink); }
-.trend-chart { display: flex; height: 220px; align-items: end; gap: 6px; overflow-x: auto; border-bottom: 1px solid var(--border); padding-top: 15px; }
+.trend-chart { display: flex; height: 220px; align-items: end; gap: 6px; overflow-x: auto; border-bottom: 1px solid var(--border); padding: 15px 0 10px; scrollbar-color: #454563 transparent; }
+.trend-chart::-webkit-scrollbar { height: 7px; }
+.trend-chart::-webkit-scrollbar-track { border-radius: 999px; background: transparent; }
+.trend-chart::-webkit-scrollbar-thumb { border: 0; border-radius: 999px; background: #454563; }
+.trend-chart::-webkit-scrollbar-thumb:hover { background: var(--violet-light); }
 .trend-period { display: grid; min-width: 38px; height: 100%; flex: 1; grid-template-rows: 1fr 28px; align-items: end; }
 .trend-bars { display: flex; height: 100%; align-items: end; justify-content: center; gap: 2px; }
 .trend-bars i { width: min(7px, 25%); min-height: 2px; border-radius: 3px 3px 0 0; }
