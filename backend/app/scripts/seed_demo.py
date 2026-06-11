@@ -2,13 +2,14 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 
 from app.core.database import AsyncSessionLocal, create_database_schema
 from app.core.security import hash_password
 from app.models.achievement import Achievement
 from app.models.category import Category
-from app.models.task import Task, TaskPriority, TaskStatus
+from app.models.social import ActivityPost, Follow, PostReaction, XpAward
+from app.models.task import Task, TaskPriority, TaskStatus, TaskVisibility
 from app.models.task_event import TaskEvent, TaskEventType
 from app.models.user import User
 from app.models.user_stats import UserStats
@@ -16,6 +17,10 @@ from app.models.user_stats import UserStats
 
 DEMO_EMAIL = "demo@example.com"
 DEMO_PASSWORD = "password123"
+SOCIAL_USERS = [
+    ("maya@example.com", "Maya Chen", "Finishing a data science portfolio one focused session at a time."),
+    ("leo@example.com", "Leo Martins", "Training consistently while shipping my final university project."),
+]
 
 TASK_BLUEPRINTS = [
     ("Submit database coursework", "Study", TaskPriority.HIGH, 29, -1),
@@ -82,12 +87,37 @@ async def seed_demo() -> None:
             await db.flush()
         else:
             user.password_hash = hash_password(DEMO_PASSWORD)
+        user.display_name = "Alex Morgan"
+        user.bio = "Building a strong bachelor project through small, consistent wins."
 
-        await db.execute(delete(Achievement).where(Achievement.user_id == user.id))
-        await db.execute(delete(TaskEvent).where(TaskEvent.user_id == user.id))
-        await db.execute(delete(Task).where(Task.user_id == user.id))
-        await db.execute(delete(Category).where(Category.user_id == user.id))
-        await db.execute(delete(UserStats).where(UserStats.user_id == user.id))
+        peers: list[User] = []
+        for email, display_name, bio in SOCIAL_USERS:
+            peer = await db.scalar(select(User).where(User.email == email))
+            if not peer:
+                peer = User(email=email, password_hash=hash_password(DEMO_PASSWORD))
+                db.add(peer)
+                await db.flush()
+            peer.password_hash = hash_password(DEMO_PASSWORD)
+            peer.display_name = display_name
+            peer.bio = bio
+            peers.append(peer)
+
+        seeded_users = [user, *peers]
+        seeded_user_ids = [item.id for item in seeded_users]
+        await db.execute(delete(PostReaction).where(PostReaction.user_id.in_(seeded_user_ids)))
+        await db.execute(delete(ActivityPost).where(ActivityPost.user_id.in_(seeded_user_ids)))
+        await db.execute(
+            delete(Follow).where(
+                or_(Follow.follower_id.in_(seeded_user_ids), Follow.followed_id.in_(seeded_user_ids))
+            )
+        )
+        await db.execute(delete(XpAward).where(XpAward.user_id.in_(seeded_user_ids)))
+
+        await db.execute(delete(Achievement).where(Achievement.user_id.in_(seeded_user_ids)))
+        await db.execute(delete(TaskEvent).where(TaskEvent.user_id.in_(seeded_user_ids)))
+        await db.execute(delete(Task).where(Task.user_id.in_(seeded_user_ids)))
+        await db.execute(delete(Category).where(Category.user_id.in_(seeded_user_ids)))
+        await db.execute(delete(UserStats).where(UserStats.user_id.in_(seeded_user_ids)))
         await db.flush()
 
         categories = {
@@ -115,10 +145,22 @@ async def seed_demo() -> None:
                 completed_at=completed_at,
                 user_id=user.id,
                 category_id=category.id,
+                visibility=TaskVisibility.PUBLIC if index >= len(TASK_BLUEPRINTS) - 6 else TaskVisibility.PRIVATE,
             )
             db.add(task)
             await db.flush()
             completed_tasks.append(task)
+            db.add(XpAward(task_id=task.id, user_id=user.id, amount=20, awarded_at=completed_at))
+            if task.visibility == TaskVisibility.PUBLIC:
+                db.add(
+                    ActivityPost(
+                        task_id=task.id,
+                        task_title=task.title,
+                        xp_awarded=20,
+                        created_at=completed_at,
+                        user_id=user.id,
+                    )
+                )
 
             db.add(
                 TaskEvent(
@@ -298,14 +340,86 @@ async def seed_demo() -> None:
                 total_tasks=len(TASK_BLUEPRINTS) + len(OPEN_TASKS),
                 completed_tasks=len(TASK_BLUEPRINTS),
                 current_streak=4,
+                xp_total=len(TASK_BLUEPRINTS) * 20,
                 user_id=user.id,
             )
+        )
+
+        peer_posts: list[ActivityPost] = []
+        peer_task_titles = [
+            ["Publish portfolio case study", "Complete Python practice set", "Review model evaluation notes"],
+            ["Finish interval training", "Write system design section", "Prepare supervisor meeting notes"],
+        ]
+        peer_xp = [260, 180]
+        for peer_index, peer in enumerate(peers):
+            category = Category(name="Shared goals", user_id=peer.id)
+            db.add(category)
+            await db.flush()
+            db.add(
+                UserStats(
+                    total_tasks=3,
+                    completed_tasks=3,
+                    current_streak=7 - peer_index * 2,
+                    xp_total=peer_xp[peer_index],
+                    user_id=peer.id,
+                )
+            )
+            for task_index, title in enumerate(peer_task_titles[peer_index]):
+                completed_at = now - timedelta(hours=4 + peer_index * 3 + task_index * 19)
+                task = Task(
+                    title=title,
+                    priority=TaskPriority.MEDIUM,
+                    status=TaskStatus.DONE,
+                    completed_at=completed_at,
+                    visibility=TaskVisibility.PUBLIC,
+                    user_id=peer.id,
+                    category_id=category.id,
+                )
+                db.add(task)
+                await db.flush()
+                db.add(XpAward(task_id=task.id, user_id=peer.id, amount=20, awarded_at=completed_at))
+                post = ActivityPost(
+                    task_id=task.id,
+                    task_title=task.title,
+                    xp_awarded=20,
+                    created_at=completed_at,
+                    user_id=peer.id,
+                )
+                db.add(post)
+                peer_posts.append(post)
+
+        await db.flush()
+        db.add_all(
+            [
+                Follow(follower_id=user.id, followed_id=peers[0].id),
+                Follow(follower_id=user.id, followed_id=peers[1].id),
+                Follow(follower_id=peers[0].id, followed_id=user.id),
+                Follow(follower_id=peers[1].id, followed_id=user.id),
+            ]
+        )
+        demo_posts = list(
+            await db.scalars(
+                select(ActivityPost)
+                .where(ActivityPost.user_id == user.id)
+                .order_by(ActivityPost.created_at.desc())
+                .limit(3)
+            )
+        )
+        db.add_all(
+            [
+                PostReaction(post_id=peer_posts[0].id, user_id=user.id),
+                PostReaction(post_id=peer_posts[3].id, user_id=user.id),
+                PostReaction(post_id=demo_posts[0].id, user_id=peers[0].id),
+                PostReaction(post_id=demo_posts[0].id, user_id=peers[1].id),
+                PostReaction(post_id=demo_posts[1].id, user_id=peers[0].id),
+            ]
         )
         await db.commit()
 
     print(
         f"Seeded {DEMO_EMAIL}: {len(TASK_BLUEPRINTS)} completed tasks, "
-        f"{len(OPEN_TASKS)} active tasks, 3 deleted-task histories, and 3 achievements."
+        f"{len(OPEN_TASKS)} active tasks, 3 deleted-task histories, 3 achievements, "
+        f"and {len(SOCIAL_USERS)} social demo users."
     )
 
 

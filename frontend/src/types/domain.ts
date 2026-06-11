@@ -4,6 +4,9 @@ export type TaskStatus = "todo" | "in_progress" | "done";
 export type User = {
   id: string;
   email: string;
+  display_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
   role: "user" | "admin";
   created_at: string;
 };
@@ -23,6 +26,7 @@ export type Task = {
   scheduled_for: string | null;
   estimated_minutes: number | null;
   is_focus: boolean;
+  visibility: "private" | "public";
   completed_at: string | null;
   category_id: string | null;
   parent_id: string | null;
@@ -40,9 +44,55 @@ export type Stats = {
   total_tasks: number;
   completed_tasks: number;
   current_streak: number;
+  xp_total: number;
+  level: number;
+  xp_into_level: number;
+  xp_for_next_level: number;
   completion_rate: number;
   by_priority: Record<string, number>;
   by_status: Record<string, number>;
+};
+
+export type Gamification = {
+  xp_total: number;
+  level: number;
+  xp_into_level: number;
+  xp_for_next_level: number;
+  current_streak: number;
+};
+
+export type Profile = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  gamification: Gamification;
+};
+
+export type Person = {
+  id: string;
+  display_name: string | null;
+  email: string;
+  avatar_url: string | null;
+  level: number;
+  is_following: boolean;
+};
+
+export type FeedPost = {
+  id: string;
+  task_title: string;
+  xp_awarded: number;
+  created_at: string;
+  author: {
+    id: string;
+    display_name: string | null;
+    email: string;
+    avatar_url: string | null;
+    level: number;
+  };
+  reactions_count: number;
+  reacted_by_me: boolean;
 };
 
 export type AnalyticsInterval = "day" | "week" | "month";

@@ -7,10 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.category import Category
 from app.models.task import Task, TaskStatus
+from app.models.social import ActivityPost
 from app.models.task_event import TaskEventType
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services.achievement_service import check_and_award
+from app.services.gamification_service import award_task_completion, sync_activity_post
 from app.services.stats_service import recalculate_stats
 from app.services.task_event_service import build_changes, record_task_event, serialize_event_value, task_snapshot
 
@@ -24,6 +26,7 @@ TRACKED_TASK_FIELDS = {
     "scheduled_for",
     "estimated_minutes",
     "is_focus",
+    "visibility",
     "category_id",
     "parent_id",
 }
@@ -76,11 +79,14 @@ async def update_task(task_id: UUID, payload: TaskUpdate, current_user: User, db
         if "status" in changes and task.status == TaskStatus.DONE:
             event_type = TaskEventType.COMPLETED
             await check_and_award(current_user.id, task, db)
+            await award_task_completion(task, db)
         elif "status" in changes:
             event_type = TaskEventType.STATUS_CHANGED
         else:
             event_type = TaskEventType.UPDATED
         await record_task_event(db, task, event_type, changes)
+        if "visibility" in changes or "title" in changes:
+            await sync_activity_post(task, db)
 
     await recalculate_stats(current_user.id, db)
     await db.commit()
@@ -88,7 +94,7 @@ async def update_task(task_id: UUID, payload: TaskUpdate, current_user: User, db
     return task
 
 
-async def complete_task(task_id: UUID, current_user: User, db: AsyncSession) -> tuple[Task, list]:
+async def complete_task(task_id: UUID, current_user: User, db: AsyncSession) -> tuple[Task, list, int]:
     task = await db.get(Task, task_id)
     if not task or task.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
@@ -105,12 +111,13 @@ async def complete_task(task_id: UUID, current_user: User, db: AsyncSession) -> 
         {"status": {"from": previous_status.value, "to": TaskStatus.DONE.value}},
     )
     achievements = await check_and_award(current_user.id, task, db)
+    xp_awarded = await award_task_completion(task, db)
     await recalculate_stats(current_user.id, db)
     await db.commit()
     await db.refresh(task)
     for achievement in achievements:
         await db.refresh(achievement)
-    return task, achievements
+    return task, achievements, xp_awarded
 
 
 async def delete_task(task_id: UUID, current_user: User, db: AsyncSession) -> None:
@@ -129,6 +136,9 @@ async def delete_task(task_id: UUID, current_user: User, db: AsyncSession) -> No
             }
         },
     )
+    post = await db.scalar(select(ActivityPost).where(ActivityPost.task_id == task.id))
+    if post:
+        await db.delete(post)
     await db.delete(task)
     await db.flush()
     await recalculate_stats(current_user.id, db)

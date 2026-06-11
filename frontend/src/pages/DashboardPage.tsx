@@ -1,4 +1,4 @@
-import { CalendarClock, Check, Clock3, Play, Plus, Star } from "lucide-react";
+import { CalendarClock, Check, Clock3, Globe2, Lock, Play, Plus, Star } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 
 import { api } from "../api/client";
@@ -121,6 +121,7 @@ function QuickAdd({
   const [scheduledFor, setScheduledFor] = useState(dateKey(new Date()));
   const [estimatedMinutes, setEstimatedMinutes] = useState(30);
   const [isFocus, setIsFocus] = useState(true);
+  const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent) {
@@ -134,7 +135,8 @@ function QuickAdd({
         category_id: categoryId || null,
         scheduled_for: `${scheduledFor}T09:00:00`,
         estimated_minutes: estimatedMinutes,
-        is_focus: isFocus
+        is_focus: isFocus,
+        visibility
       });
       setTitle("");
       await onChanged();
@@ -187,6 +189,14 @@ function QuickAdd({
       <label className="focus-toggle">
         <input type="checkbox" checked={isFocus} onChange={(event) => setIsFocus(event.target.checked)} />
         <Star size={16} />
+      </label>
+      <label className="visibility-toggle" title={visibility === "public" ? "Shared with followers" : "Private task"}>
+        <input
+          type="checkbox"
+          checked={visibility === "public"}
+          onChange={(event) => setVisibility(event.target.checked ? "public" : "private")}
+        />
+        {visibility === "public" ? <Globe2 size={16} /> : <Lock size={16} />}
       </label>
       <button disabled={busy}>{busy ? "Adding..." : "Add"}</button>
     </form>

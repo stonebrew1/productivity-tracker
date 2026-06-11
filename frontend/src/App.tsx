@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, CheckCircle2, ListTodo, LogOut, Medal } from "lucide-react";
+import { BarChart3, CalendarDays, CheckCircle2, ListTodo, LogOut, Medal, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { api, clearTokens, getAccessToken, setTokens } from "./api/client";
@@ -6,10 +6,11 @@ import { AchievementsPage } from "./pages/AchievementsPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { StatisticsPage } from "./pages/StatisticsPage";
+import { SocialPage } from "./pages/SocialPage";
 import { TasksPage } from "./pages/TasksPage";
 import type { Achievement, Category, Stats, Task, User } from "./types/domain";
 
-type View = "dashboard" | "tasks" | "achievements" | "statistics";
+type View = "dashboard" | "tasks" | "social" | "achievements" | "statistics";
 
 export function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -73,6 +74,7 @@ export function App() {
   const navItems = [
     { id: "dashboard" as View, label: "Today", icon: CalendarDays },
     { id: "tasks" as View, label: "Tasks", icon: ListTodo },
+    { id: "social" as View, label: "Social", icon: Users },
     { id: "achievements" as View, label: "Achievements", icon: Medal },
     { id: "statistics" as View, label: "Statistics", icon: BarChart3 }
   ];
@@ -123,6 +125,7 @@ export function App() {
             onError={setError}
           />
         )}
+        {view === "social" && <SocialPage onError={setError} />}
         {view === "achievements" && <AchievementsPage achievements={achievements} />}
         {view === "statistics" && <StatisticsPage stats={stats} />}
       </main>

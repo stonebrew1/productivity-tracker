@@ -12,6 +12,7 @@ from app.models.task_event import TaskEvent
 from app.models.user import User
 from app.schemas.stats import AnalyticsInterval, AnalyticsReport, StatsRead
 from app.services.analytics_service import aggregate_task_events
+from app.services.gamification_service import gamification_snapshot
 from app.services.stats_service import recalculate_stats
 
 
@@ -32,10 +33,15 @@ async def read_statistics(
     )
     total = stats.total_tasks
     completed = stats.completed_tasks
+    game = gamification_snapshot(stats.xp_total, stats.current_streak)
     return StatsRead(
         total_tasks=total,
         completed_tasks=completed,
         current_streak=stats.current_streak,
+        xp_total=game["xp_total"],
+        level=game["level"],
+        xp_into_level=game["xp_into_level"],
+        xp_for_next_level=game["xp_for_next_level"],
         completion_rate=round((completed / total) * 100, 2) if total else 0,
         by_priority={priority.value: count for priority, count in by_priority_rows.all()},
         by_status={status.value: count for status, count in by_status_rows.all()},

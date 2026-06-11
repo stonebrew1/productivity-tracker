@@ -94,8 +94,8 @@ async def complete_task_route(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TaskCompleteResponse:
-    task, achievements = await complete_task(task_id, current_user, db)
-    return TaskCompleteResponse(task=task, achievements=achievements)
+    task, achievements, xp_awarded = await complete_task(task_id, current_user, db)
+    return TaskCompleteResponse(task=task, achievements=achievements, xp_awarded=xp_awarded)
 
 
 @router.delete("/{task_id}", status_code=204)

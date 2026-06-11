@@ -21,6 +21,11 @@ class TaskStatus(StrEnum):
     DONE = "done"
 
 
+class TaskVisibility(StrEnum):
+    PRIVATE = "private"
+    PUBLIC = "public"
+
+
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -33,6 +38,9 @@ class Task(Base):
     scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     estimated_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_focus: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    visibility: Mapped[TaskVisibility] = mapped_column(
+        Enum(TaskVisibility), default=TaskVisibility.PRIVATE, server_default=TaskVisibility.PRIVATE.name
+    )
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     category_id: Mapped[UUID | None] = mapped_column(
