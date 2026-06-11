@@ -1,4 +1,4 @@
-import { BarChart3, CheckCircle2, LayoutDashboard, ListTodo, LogOut, Medal } from "lucide-react";
+import { BarChart3, CalendarDays, CheckCircle2, ListTodo, LogOut, Medal } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { api, clearTokens, getAccessToken, setTokens } from "./api/client";
@@ -71,7 +71,7 @@ export function App() {
   if (!user) return <AuthPage onSubmit={handleLogin} error={error} setError={setError} />;
 
   const navItems = [
-    { id: "dashboard" as View, label: "Dashboard", icon: LayoutDashboard },
+    { id: "dashboard" as View, label: "Today", icon: CalendarDays },
     { id: "tasks" as View, label: "Tasks", icon: ListTodo },
     { id: "achievements" as View, label: "Achievements", icon: Medal },
     { id: "statistics" as View, label: "Statistics", icon: BarChart3 }
@@ -105,7 +105,16 @@ export function App() {
       </aside>
       <main className="content">
         {error && <div className="alert">{error}</div>}
-        {view === "dashboard" && <DashboardPage tasks={tasks} achievements={achievements} stats={stats} />}
+        {view === "dashboard" && (
+          <DashboardPage
+            tasks={tasks}
+            categories={categories}
+            achievements={achievements}
+            stats={stats}
+            onChanged={refreshData}
+            onError={setError}
+          />
+        )}
         {view === "tasks" && (
           <TasksPage
             tasks={tasks}

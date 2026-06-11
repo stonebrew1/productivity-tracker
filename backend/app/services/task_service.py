@@ -21,6 +21,9 @@ TRACKED_TASK_FIELDS = {
     "priority",
     "status",
     "deadline",
+    "scheduled_for",
+    "estimated_minutes",
+    "is_focus",
     "category_id",
     "parent_id",
 }

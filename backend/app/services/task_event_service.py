@@ -14,6 +14,9 @@ ANALYTICS_SNAPSHOT_FIELDS = {
     "priority",
     "category_id",
     "deadline",
+    "scheduled_for",
+    "estimated_minutes",
+    "is_focus",
     "completed_at",
 }
 

@@ -12,6 +12,9 @@ class TaskCreate(BaseModel):
     description: str | None = None
     priority: TaskPriority = TaskPriority.MEDIUM
     deadline: datetime | None = None
+    scheduled_for: datetime | None = None
+    estimated_minutes: int | None = Field(default=None, ge=5, le=1440)
+    is_focus: bool = False
     category_id: UUID | None = None
     parent_id: UUID | None = None
 
@@ -22,6 +25,9 @@ class TaskUpdate(BaseModel):
     priority: TaskPriority | None = None
     status: TaskStatus | None = None
     deadline: datetime | None = None
+    scheduled_for: datetime | None = None
+    estimated_minutes: int | None = Field(default=None, ge=5, le=1440)
+    is_focus: bool | None = None
     category_id: UUID | None = None
     parent_id: UUID | None = None
 
@@ -33,6 +39,9 @@ class TaskRead(BaseModel):
     priority: TaskPriority
     status: TaskStatus
     deadline: datetime | None
+    scheduled_for: datetime | None
+    estimated_minutes: int | None
+    is_focus: bool
     completed_at: datetime | None
     category_id: UUID | None
     parent_id: UUID | None
