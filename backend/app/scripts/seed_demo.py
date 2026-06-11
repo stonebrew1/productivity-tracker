@@ -8,11 +8,13 @@ from app.core.database import AsyncSessionLocal, create_database_schema
 from app.core.security import hash_password
 from app.models.achievement import Achievement
 from app.models.category import Category
-from app.models.social import ActivityPost, Follow, PostReaction, XpAward
+from app.models.social import ActivityPost, Follow, GamificationRule, PostReaction, QuestCompletion, XpAward
 from app.models.task import Task, TaskPriority, TaskStatus, TaskVisibility
 from app.models.task_event import TaskEvent, TaskEventType
 from app.models.user import User
 from app.models.user_stats import UserStats
+from app.services.achievement_service import check_and_award
+from app.services.gamification_service import award_quest_rewards
 
 
 DEMO_EMAIL = "demo@example.com"
@@ -111,7 +113,9 @@ async def seed_demo() -> None:
                 or_(Follow.follower_id.in_(seeded_user_ids), Follow.followed_id.in_(seeded_user_ids))
             )
         )
+        await db.execute(delete(QuestCompletion).where(QuestCompletion.user_id.in_(seeded_user_ids)))
         await db.execute(delete(XpAward).where(XpAward.user_id.in_(seeded_user_ids)))
+        await db.execute(delete(GamificationRule))
 
         await db.execute(delete(Achievement).where(Achievement.user_id.in_(seeded_user_ids)))
         await db.execute(delete(TaskEvent).where(TaskEvent.user_id.in_(seeded_user_ids)))
@@ -135,6 +139,8 @@ async def seed_demo() -> None:
                 deadline + timedelta(days=timing_days),
                 now - timedelta(hours=index + 1),
             )
+            if index >= len(TASK_BLUEPRINTS) - 4:
+                completed_at = now - timedelta(days=len(TASK_BLUEPRINTS) - 1 - index, hours=1)
             category = categories[category_name]
             task = Task(
                 title=title,
@@ -150,7 +156,15 @@ async def seed_demo() -> None:
             db.add(task)
             await db.flush()
             completed_tasks.append(task)
-            db.add(XpAward(task_id=task.id, user_id=user.id, amount=20, awarded_at=completed_at))
+            db.add(
+                XpAward(
+                    task_id=task.id,
+                    source_key=f"task:{task.id}",
+                    user_id=user.id,
+                    amount=20,
+                    awarded_at=completed_at,
+                )
+            )
             if task.visibility == TaskVisibility.PUBLIC:
                 db.add(
                     ActivityPost(
@@ -310,40 +324,17 @@ async def seed_demo() -> None:
                 ]
             )
 
-        db.add_all(
-            [
-                Achievement(
-                    title="First win",
-                    description="Completed the first tracked task.",
-                    awarded_at=completed_tasks[0].completed_at,
-                    user_id=user.id,
-                    task_id=completed_tasks[0].id,
-                ),
-                Achievement(
-                    title="Deadline keeper",
-                    description="Completed ten tasks on time.",
-                    awarded_at=completed_tasks[12].completed_at,
-                    user_id=user.id,
-                    task_id=completed_tasks[12].id,
-                ),
-                Achievement(
-                    title="Productivity sprint",
-                    description="Completed five tasks in one week.",
-                    awarded_at=completed_tasks[-1].completed_at,
-                    user_id=user.id,
-                    task_id=completed_tasks[-1].id,
-                ),
-            ]
+        stats = UserStats(
+            total_tasks=len(TASK_BLUEPRINTS) + len(OPEN_TASKS),
+            completed_tasks=len(TASK_BLUEPRINTS),
+            current_streak=4,
+            xp_total=len(TASK_BLUEPRINTS) * 20,
+            user_id=user.id,
         )
-        db.add(
-            UserStats(
-                total_tasks=len(TASK_BLUEPRINTS) + len(OPEN_TASKS),
-                completed_tasks=len(TASK_BLUEPRINTS),
-                current_streak=4,
-                xp_total=len(TASK_BLUEPRINTS) * 20,
-                user_id=user.id,
-            )
-        )
+        db.add(stats)
+        await db.flush()
+        await check_and_award(user.id, completed_tasks[-1], db)
+        await award_quest_rewards(user.id, db)
 
         peer_posts: list[ActivityPost] = []
         peer_task_titles = [
@@ -377,7 +368,15 @@ async def seed_demo() -> None:
                 )
                 db.add(task)
                 await db.flush()
-                db.add(XpAward(task_id=task.id, user_id=peer.id, amount=20, awarded_at=completed_at))
+                db.add(
+                    XpAward(
+                        task_id=task.id,
+                        source_key=f"task:{task.id}",
+                        user_id=peer.id,
+                        amount=20,
+                        awarded_at=completed_at,
+                    )
+                )
                 post = ActivityPost(
                     task_id=task.id,
                     task_title=task.title,
@@ -418,7 +417,7 @@ async def seed_demo() -> None:
 
     print(
         f"Seeded {DEMO_EMAIL}: {len(TASK_BLUEPRINTS)} completed tasks, "
-        f"{len(OPEN_TASKS)} active tasks, 3 deleted-task histories, 3 achievements, "
+        f"{len(OPEN_TASKS)} active tasks, 3 deleted-task histories, gamification progress, "
         f"and {len(SOCIAL_USERS)} social demo users."
     )
 

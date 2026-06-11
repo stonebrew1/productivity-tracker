@@ -4,6 +4,7 @@ import type {
   AnalyticsReport,
   Category,
   FeedPost,
+  GamificationDashboard,
   Person,
   Profile,
   Stats,
@@ -73,6 +74,7 @@ export const api = {
     request<{ task: Task; achievements: Achievement[]; xp_awarded: number }>(`/tasks/${id}/complete`, { method: "POST" }),
   deleteTask: (id: string) => request<void>(`/tasks/${id}`, { method: "DELETE" }),
   achievements: () => request<Achievement[]>("/achievements"),
+  gamification: () => request<GamificationDashboard>("/gamification"),
   statistics: () => request<Stats>("/statistics"),
   profile: () => request<Profile>("/social/profile"),
   updateProfile: (payload: { display_name?: string | null; bio?: string | null; avatar_url?: string | null }) =>

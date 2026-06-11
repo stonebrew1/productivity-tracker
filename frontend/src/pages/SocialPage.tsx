@@ -1,8 +1,8 @@
-import { CheckCircle2, Heart, UserMinus, UserPlus } from "lucide-react";
+import { CheckCircle2, Heart, Medal, UserMinus, UserPlus } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { FeedPost, Person, Profile } from "../types/domain";
+import type { FeedPost, GamificationDashboard, Person, Profile } from "../types/domain";
 
 type Props = {
   onError: (message: string | null) => void;
@@ -12,17 +12,20 @@ export function SocialPage({ onError }: Props) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [feed, setFeed] = useState<FeedPost[]>([]);
+  const [game, setGame] = useState<GamificationDashboard | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function loadSocial() {
-    const [nextProfile, nextPeople, nextFeed] = await Promise.all([
+    const [nextProfile, nextPeople, nextFeed, nextGame] = await Promise.all([
       api.profile(),
       api.people(),
-      api.feed()
+      api.feed(),
+      api.gamification()
     ]);
     setProfile(nextProfile);
     setPeople(nextPeople);
     setFeed(nextFeed);
+    setGame(nextGame);
   }
 
   useEffect(() => {
@@ -67,6 +70,15 @@ export function SocialPage({ onError }: Props) {
         </div>
         <div className="streak-stat"><strong>{profile.gamification.current_streak}</strong><span>streak</span></div>
       </section>
+
+      {game && game.showcased_badges.length > 0 && (
+        <section className="profile-showcase">
+          <span>Badge showcase</span>
+          {game.showcased_badges.map((badge) => (
+            <div key={badge.code}><Medal size={16} /><strong>{badge.title}</strong></div>
+          ))}
+        </section>
+      )}
 
       <div className="social-layout">
         <main className="feed-column">

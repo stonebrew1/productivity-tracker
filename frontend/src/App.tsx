@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, CheckCircle2, ListTodo, LogOut, Medal, Users } from "lucide-react";
+import { BarChart3, CheckSquare2, Flame, Home, LogOut, Trophy, Users, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { api, clearTokens, getAccessToken, setTokens } from "./api/client";
@@ -72,63 +72,105 @@ export function App() {
   if (!user) return <AuthPage onSubmit={handleLogin} error={error} setError={setError} />;
 
   const navItems = [
-    { id: "dashboard" as View, label: "Today", icon: CalendarDays },
-    { id: "tasks" as View, label: "Tasks", icon: ListTodo },
+    { id: "dashboard" as View, label: "Today", icon: Home },
+    { id: "tasks" as View, label: "Tasks", icon: CheckSquare2 },
     { id: "social" as View, label: "Social", icon: Users },
-    { id: "achievements" as View, label: "Achievements", icon: Medal },
+    { id: "achievements" as View, label: "Progress", icon: Trophy },
     { id: "statistics" as View, label: "Statistics", icon: BarChart3 }
   ];
+  const displayName = user.display_name || user.email.split("@")[0];
+  const level = stats?.level ?? 1;
+  const xp = stats?.xp_total ?? 0;
+  const streak = stats?.current_streak ?? 0;
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <CheckCircle2 size={28} />
-          <span>Productivity</span>
+          <span className="brand-mark"><Zap size={20} fill="currentColor" /></span>
+          <span className="brand-copy"><strong>Momentum</strong></span>
         </div>
-        <nav>
+        <section className="sidebar-profile">
+          <span className="account-avatar">{displayName.slice(0, 1).toUpperCase()}</span>
+          <div><strong>{displayName}</strong><span>Level {level}</span></div>
+          <span className="streak-pill"><Flame size={13} />{streak}</span>
+        </section>
+        <div className="sidebar-xp">
+          <div><span>{xp} XP</span><span>Level {level}</span></div>
+          <i><b style={{ width: `${stats ? Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100) : 0}%` }} /></i>
+        </div>
+        <nav aria-label="Primary navigation">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <button className={view === item.id ? "active" : ""} key={item.id} onClick={() => setView(item.id)}>
+              <button
+                aria-label={item.label}
+                className={view === item.id ? "active" : ""}
+                key={item.id}
+                onClick={() => setView(item.id)}
+                title={item.label}
+              >
                 <Icon size={18} />
-                {item.label}
+                <span>{item.label}</span>
               </button>
             );
           })}
         </nav>
         <div className="account">
-          <span>{user.email}</span>
-          <button onClick={handleLogout}>
-            <LogOut size={16} />
-            Logout
-          </button>
+          <button aria-label="Sign out" title="Sign out" onClick={handleLogout}><LogOut size={17} /><span>Sign out</span></button>
         </div>
       </aside>
-      <main className="content">
-        {error && <div className="alert">{error}</div>}
-        {view === "dashboard" && (
-          <DashboardPage
-            tasks={tasks}
-            categories={categories}
-            achievements={achievements}
-            stats={stats}
-            onChanged={refreshData}
-            onError={setError}
-          />
-        )}
-        {view === "tasks" && (
-          <TasksPage
-            tasks={tasks}
-            categories={categories}
-            onChanged={refreshData}
-            onError={setError}
-          />
-        )}
-        {view === "social" && <SocialPage onError={setError} />}
-        {view === "achievements" && <AchievementsPage achievements={achievements} />}
-        {view === "statistics" && <StatisticsPage stats={stats} />}
-      </main>
+      <div className="workspace">
+        <header className="mobile-header">
+          <div className="brand">
+            <span className="brand-mark"><Zap size={18} fill="currentColor" /></span>
+            <span className="brand-copy"><strong>Momentum</strong><small>{navItems.find((item) => item.id === view)?.label}</small></span>
+          </div>
+          <span className="mobile-streak"><Flame size={15} /> {streak}</span>
+        </header>
+        <main className="content">
+          <div className="content-inner">
+            {error && <div className="alert">{error}</div>}
+            {view === "dashboard" && (
+              <DashboardPage
+                tasks={tasks}
+                categories={categories}
+                achievements={achievements}
+                stats={stats}
+                onChanged={refreshData}
+                onError={setError}
+              />
+            )}
+            {view === "tasks" && (
+              <TasksPage
+                tasks={tasks}
+                categories={categories}
+                onChanged={refreshData}
+                onError={setError}
+              />
+            )}
+            {view === "social" && <SocialPage onError={setError} />}
+            {view === "achievements" && <AchievementsPage onError={setError} />}
+            {view === "statistics" && <StatisticsPage stats={stats} />}
+          </div>
+        </main>
+        <nav className="mobile-nav" aria-label="Mobile navigation">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                aria-label={item.label}
+                className={view === item.id ? "active" : ""}
+                key={item.id}
+                onClick={() => setView(item.id)}
+              >
+                <Icon size={20} />
+                <span>{item.label === "Gamification" ? "Progress" : item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
     </div>
   );
 }

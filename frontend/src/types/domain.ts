@@ -34,10 +34,46 @@ export type Task = {
 
 export type Achievement = {
   id: string;
+  code: string | null;
   title: string;
   description: string;
+  category: string;
+  rarity: string;
+  icon: string;
   awarded_at: string;
   task_id: string | null;
+};
+
+export type BadgeProgress = {
+  code: string;
+  title: string;
+  description: string;
+  category: string;
+  rarity: "common" | "rare" | "epic" | "legendary";
+  icon: string;
+  progress: number;
+  target: number;
+  unlocked: boolean;
+  awarded_at: string | null;
+};
+
+export type Quest = {
+  code: string;
+  title: string;
+  description: string;
+  cadence: "daily" | "weekly";
+  progress: number;
+  target: number;
+  reward_xp: number;
+  completed: boolean;
+  expires_at: string;
+};
+
+export type GamificationDashboard = {
+  progression: Gamification;
+  badges: BadgeProgress[];
+  quests: Quest[];
+  showcased_badges: BadgeProgress[];
 };
 
 export type Stats = {
