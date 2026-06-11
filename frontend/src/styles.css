@@ -200,6 +200,10 @@ textarea {
   padding: 10px;
 }
 
+.quick-add > * {
+  min-width: 0;
+}
+
 .quick-add-title {
   align-items: center;
   display: flex;
@@ -281,6 +285,22 @@ textarea {
   background: #23645a;
   color: #ffffff;
   min-height: 38px;
+}
+
+@media (max-width: 1350px) {
+  .quick-add {
+    grid-template-columns:
+      minmax(130px, 1fr)
+      minmax(130px, 1fr)
+      minmax(140px, 1fr)
+      86px
+      42px
+      74px;
+  }
+
+  .quick-add-title {
+    grid-column: 1 / -1;
+  }
 }
 
 .today-summary {
