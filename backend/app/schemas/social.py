@@ -83,3 +83,20 @@ class NotificationRead(BaseModel):
     created_at: datetime
     post_id: UUID | None
     actor: FeedAuthor
+
+
+class ChallengeRead(BaseModel):
+    id: UUID
+    code: str
+    title: str
+    description: str
+    target: int
+    reward_xp: int
+    starts_at: datetime
+    ends_at: datetime
+    team_progress: int
+    my_progress: int
+    participant_count: int
+    joined: bool
+    completed: bool
+    rewarded: bool

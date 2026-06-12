@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from app.schemas.social import GamificationRead
+from app.schemas.social import ChallengeRead, GamificationRead
 
 
 class BadgeProgressRead(BaseModel):
@@ -35,3 +35,4 @@ class GamificationDashboardRead(BaseModel):
     badges: list[BadgeProgressRead]
     quests: list[QuestRead]
     showcased_badges: list[BadgeProgressRead]
+    challenges: list[ChallengeRead]

@@ -10,6 +10,8 @@ from app.models.achievement import Achievement
 from app.models.category import Category
 from app.models.social import (
     ActivityPost,
+    Challenge,
+    ChallengeMember,
     Follow,
     GamificationRule,
     Notification,
@@ -115,6 +117,8 @@ async def seed_demo() -> None:
 
         seeded_users = [user, *peers]
         seeded_user_ids = [item.id for item in seeded_users]
+        await db.execute(delete(ChallengeMember).where(ChallengeMember.user_id.in_(seeded_user_ids)))
+        await db.execute(delete(Challenge))
         await db.execute(
             delete(Notification).where(
                 or_(
@@ -478,12 +482,52 @@ async def seed_demo() -> None:
                 ),
             ]
         )
+        challenge_start = now - timedelta(days=7)
+        challenge_end = now + timedelta(days=7)
+        momentum_challenge = Challenge(
+            code="public_momentum_sprint",
+            title="Public momentum sprint",
+            description="Complete 13 public tasks together before the sprint closes.",
+            target=13,
+            reward_xp=40,
+            starts_at=challenge_start,
+            ends_at=challenge_end,
+        )
+        focus_relay = Challenge(
+            code="community_finish_line",
+            title="Community finish line",
+            description="Join the circle and help complete eight public tasks as a team.",
+            target=8,
+            reward_xp=30,
+            starts_at=challenge_start,
+            ends_at=challenge_end,
+        )
+        db.add_all([momentum_challenge, focus_relay])
+        await db.flush()
+        db.add_all(
+            [
+                ChallengeMember(
+                    challenge_id=momentum_challenge.id,
+                    user_id=member.id,
+                    joined_at=challenge_start,
+                )
+                for member in seeded_users
+            ]
+            + [
+                ChallengeMember(
+                    challenge_id=focus_relay.id,
+                    user_id=peer.id,
+                    joined_at=challenge_start,
+                )
+                for peer in peers
+            ]
+        )
         await db.commit()
 
     print(
         f"Seeded {DEMO_EMAIL}: {len(TASK_BLUEPRINTS)} completed tasks, "
         f"{len(OPEN_TASKS)} active tasks, 3 deleted-task histories, gamification progress, "
-        f"and {len(SOCIAL_USERS)} social demo users with comments and notifications."
+        f"{len(SOCIAL_USERS)} social demo users, and 2 collaborative challenges."
     )
 
 

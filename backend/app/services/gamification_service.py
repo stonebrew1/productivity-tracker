@@ -11,6 +11,7 @@ from app.models.user_stats import UserStats
 from app.schemas.gamification import BadgeProgressRead, GamificationDashboardRead, QuestRead
 from app.schemas.social import GamificationRead
 from app.services.achievement_service import BADGE_CATALOG, badge_metrics
+from app.services.challenge_service import list_challenges
 from app.services.stats_service import ensure_stats
 
 
@@ -251,6 +252,7 @@ async def gamification_dashboard(user_id: UUID, db: AsyncSession) -> Gamificatio
         badges=badges,
         quests=quests,
         showcased_badges=[badge for badge in badges if badge.unlocked][-3:],
+        challenges=await list_challenges(user_id, db),
     )
 
 

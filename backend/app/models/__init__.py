@@ -3,6 +3,8 @@ from app.models.category import Category
 from app.models.refresh_token import RefreshToken
 from app.models.social import (
     ActivityPost,
+    Challenge,
+    ChallengeMember,
     Follow,
     GamificationRule,
     Notification,
@@ -21,6 +23,8 @@ __all__ = [
     "Category",
     "RefreshToken",
     "ActivityPost",
+    "Challenge",
+    "ChallengeMember",
     "Follow",
     "GamificationRule",
     "Notification",

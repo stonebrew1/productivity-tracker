@@ -8,12 +8,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models.social import ActivityPost, Follow, Notification, PostComment, PostReaction, XpAward
+from app.models.social import (
+    ActivityPost,
+    Challenge,
+    ChallengeMember,
+    Follow,
+    Notification,
+    PostComment,
+    PostReaction,
+    XpAward,
+)
 from app.models.user import User
 from app.models.user_stats import UserStats
 from app.schemas.social import (
     CommentCreate,
     CommentRead,
+    ChallengeRead,
     FeedAuthor,
     FeedPostRead,
     LeaderboardEntryRead,
@@ -23,6 +33,7 @@ from app.schemas.social import (
 )
 from app.schemas.user import ProfileUpdate
 from app.services.gamification_service import award_quest_rewards, gamification_snapshot, level_from_xp
+from app.services.challenge_service import challenge_snapshot, list_challenges
 from app.services.stats_service import ensure_stats
 
 
@@ -131,6 +142,68 @@ async def read_leaderboard(
         )
         for index, (user, stats, weekly_xp) in enumerate(rows, start=1)
     ]
+
+
+@router.get("/challenges", response_model=list[ChallengeRead])
+async def read_challenges(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[ChallengeRead]:
+    return await list_challenges(current_user.id, db)
+
+
+@router.post("/challenges/{challenge_id}/join", response_model=ChallengeRead)
+async def join_challenge(
+    challenge_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ChallengeRead:
+    challenge = await db.get(Challenge, challenge_id)
+    now = datetime.now(timezone.utc)
+    if not challenge or not challenge.is_active or challenge.ends_at <= now:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Challenge not found.")
+    current_state = await challenge_snapshot(challenge, current_user.id, db)
+    if current_state.completed:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Completed challenges cannot be joined.")
+    existing = await db.scalar(
+        select(ChallengeMember).where(
+            ChallengeMember.challenge_id == challenge.id,
+            ChallengeMember.user_id == current_user.id,
+        )
+    )
+    if not existing:
+        db.add(
+            ChallengeMember(
+                challenge_id=challenge.id,
+                user_id=current_user.id,
+                joined_at=max(now, challenge.starts_at),
+            )
+        )
+        await db.commit()
+    return await challenge_snapshot(challenge, current_user.id, db)
+
+
+@router.delete("/challenges/{challenge_id}/join", status_code=204)
+async def leave_challenge(
+    challenge_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    challenge = await db.get(Challenge, challenge_id)
+    if not challenge:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Challenge not found.")
+    snapshot = await challenge_snapshot(challenge, current_user.id, db)
+    if snapshot.completed:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Completed challenges cannot be left.")
+    membership = await db.scalar(
+        select(ChallengeMember).where(
+            ChallengeMember.challenge_id == challenge.id,
+            ChallengeMember.user_id == current_user.id,
+        )
+    )
+    if membership:
+        await db.delete(membership)
+        await db.commit()
 
 
 @router.post("/people/{user_id}/follow", status_code=204)

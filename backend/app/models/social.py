@@ -160,3 +160,38 @@ class Notification(Base):
     )
 
     actor = relationship("User", foreign_keys=[actor_id])
+
+
+class Challenge(Base):
+    __tablename__ = "challenges"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str] = mapped_column(String(280))
+    target: Mapped[int] = mapped_column(Integer)
+    reward_xp: Mapped[int] = mapped_column(Integer)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+    members = relationship("ChallengeMember", back_populates="challenge", cascade="all, delete-orphan")
+
+
+class ChallengeMember(Base):
+    __tablename__ = "challenge_members"
+    __table_args__ = (UniqueConstraint("challenge_id", "user_id", name="uq_challenge_members_pair"),)
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    joined_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    challenge_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("challenges.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+
+    challenge = relationship("Challenge", back_populates="members")
+    user = relationship("User")

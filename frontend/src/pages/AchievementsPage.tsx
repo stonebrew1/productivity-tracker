@@ -8,6 +8,7 @@ import {
   Medal,
   Target,
   Trophy,
+  UsersRound,
   Zap
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -59,6 +60,24 @@ export function AchievementsPage({ onError }: { onError: (message: string | null
         </div>
         <div className="quest-grid">
           {dashboard.quests.map((quest) => <QuestCard quest={quest} key={quest.code} />)}
+        </div>
+      </section>}
+
+      {tab === "overview" && <section className="progress-challenges">
+        <div className="section-heading">
+          <h2>Team challenges</h2>
+          <span>{dashboard.challenges.filter((challenge) => challenge.completed).length} completed</span>
+        </div>
+        <div className="challenge-grid">
+          {dashboard.challenges.filter((challenge) => challenge.joined).map((challenge) => (
+            <article className={`progress-challenge ${challenge.completed ? "completed" : ""}`} key={challenge.id}>
+              <header><span><UsersRound size={14} />{challenge.participant_count} participants</span><strong>+{challenge.reward_xp} XP</strong></header>
+              <h3>{challenge.title}</h3>
+              <p>{challenge.description}</p>
+              <div className="quest-progress"><i style={{ width: `${Math.round((challenge.team_progress / challenge.target) * 100)}%` }} /></div>
+              <footer><span>{challenge.team_progress} / {challenge.target} team tasks</span><b>{challenge.completed ? "Complete" : `${challenge.my_progress} yours`}</b></footer>
+            </article>
+          ))}
         </div>
       </section>}
 

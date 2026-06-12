@@ -1,4 +1,4 @@
-import { Bell, Check, CheckCircle2, Crown, Flame, Heart, Medal, MessageCircle, Send, Sparkles, Trash2, UserMinus, UserPlus, Zap } from "lucide-react";
+import { Bell, Check, CheckCircle2, Crown, Flag, Flame, Heart, Medal, MessageCircle, Send, Sparkles, Trash2, UserMinus, UserPlus, UsersRound, Zap } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
@@ -160,6 +160,32 @@ export function SocialPage({ onError }: Props) {
               </div>
             </section>
           ))}
+          {game && (
+            <section className="challenge-section">
+              <div className="section-heading"><h2>Community challenges</h2><span>Public completions only</span></div>
+              <div className="challenge-list">
+                {game.challenges.map((challenge) => (
+                  <article className={`challenge-card ${challenge.completed ? "completed" : ""}`} key={challenge.id}>
+                    <span className="challenge-icon"><Flag size={18} /></span>
+                    <div className="challenge-copy">
+                      <div><strong>{challenge.title}</strong><span><UsersRound size={12} />{challenge.participant_count}</span></div>
+                      <p>{challenge.description}</p>
+                      <div className="challenge-progress"><i style={{ width: `${Math.round((challenge.team_progress / challenge.target) * 100)}%` }} /></div>
+                      <small>{challenge.team_progress} / {challenge.target} team tasks · You contributed {challenge.my_progress}</small>
+                    </div>
+                    <div className="challenge-reward">
+                      <b>+{challenge.reward_xp} XP</b>
+                      {challenge.completed ? <span><Check size={13} /> Complete</span> : challenge.joined ? (
+                        <button onClick={() => mutate(() => api.leaveChallenge(challenge.id))}>Leave</button>
+                      ) : (
+                        <button onClick={() => mutate(() => api.joinChallenge(challenge.id))}>Join</button>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
           <div className="section-heading">
             <h2>Activity feed</h2>
             <span>{feed.length} updates</span>

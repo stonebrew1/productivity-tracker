@@ -74,6 +74,24 @@ export type GamificationDashboard = {
   badges: BadgeProgress[];
   quests: Quest[];
   showcased_badges: BadgeProgress[];
+  challenges: Challenge[];
+};
+
+export type Challenge = {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  target: number;
+  reward_xp: number;
+  starts_at: string;
+  ends_at: string;
+  team_progress: number;
+  my_progress: number;
+  participant_count: number;
+  joined: boolean;
+  completed: boolean;
+  rewarded: boolean;
 };
 
 export type Stats = {
@@ -156,7 +174,7 @@ export type PostComment = {
 
 export type SocialNotification = {
   id: string;
-  kind: "follow" | "reaction" | "comment";
+  kind: "follow" | "reaction" | "comment" | "challenge";
   message: string;
   is_read: boolean;
   created_at: string;

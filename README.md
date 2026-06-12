@@ -43,6 +43,8 @@ Then open:
 - `DELETE /api/social/comments/{comment_id}`
 - `GET /api/social/notifications`
 - `POST /api/social/notifications/read`
+- `GET /api/social/challenges`
+- `POST/DELETE /api/social/challenges/{challenge_id}/join`
 - `POST/DELETE /api/social/posts/{post_id}/reaction`
 - `GET /api/gamification`
 
@@ -61,6 +63,8 @@ Phase 2 adds database-configurable XP rules, daily and weekly quests, quest bonu
 Phase 3 connects social activity back into progression. The Social page includes a follower-scoped weekly XP leaderboard, recent connection activity, and a weekly encouragement quest. Encouraging three followed-user updates awards 25 XP once per week and immediately updates progression and leaderboard position. Users cannot react to their own posts.
 
 Phase 4 adds inline comments and an in-app notification inbox for follows, reactions, and comments. Commenting on two connection updates completes the weekly **Keep the conversation moving** quest for 20 XP. Feed access rules also apply to comments, comment authors can delete their own messages, and notifications can be marked read in one action.
+
+Phase 5 introduces collaborative community challenges. Users can join time-boxed challenges where only public tasks completed after joining contribute to the shared target. When the team reaches its goal, every participant receives the challenge XP reward exactly once, and non-finishing participants receive a completion notification. Completed challenges cannot be left.
 
 The backend currently creates new tables automatically on startup. Moving all schema changes to Alembic migrations is the next infrastructure milestone.
 
@@ -92,3 +96,5 @@ For the Phase 2 demo, open **Gamification** first to see the mixed quest and bad
 For the Phase 3 demo, open **Social** and note the weekly leaderboard and the partially completed **Lift the circle** quest. Encourage an unreacted Maya or Leo update to complete the quest, then observe the awarded XP in Progression and the refreshed weekly ranking.
 
 For the Phase 4 demo, the seeded account begins with one of two required comments and two unread notifications. Expand a Maya or Leo post, add one constructive comment, and observe the quest complete, the 20 XP award, the updated leaderboard, and the new notification on the post owner's account.
+
+For the Phase 5 demo, the seeded **Public momentum sprint** begins at 12/13 with Alex, Maya, and Leo participating. Create and complete one public task to finish the team target. All three participants receive 40 XP once, the Social challenge card becomes complete, and the result appears under Team challenges in Progression. A second 6/8 challenge remains available to join.
