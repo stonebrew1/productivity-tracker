@@ -260,6 +260,34 @@ export type GroupMilestone = {
   can_manage: boolean;
 };
 
+export type GroupLeaderboardEntry = {
+  rank: number;
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+  group_xp: number;
+  completed_tasks: number;
+  contribution_streak: number;
+  is_current_user: boolean;
+};
+
+export type GroupReward = {
+  id: string;
+  user_id: string;
+  display_name: string;
+  reason: string;
+  amount: number;
+  awarded_at: string;
+};
+
+export type GroupProgress = {
+  total_group_xp: number;
+  completed_tasks: number;
+  team_streak: number;
+  leaderboard: GroupLeaderboardEntry[];
+  recent_rewards: GroupReward[];
+};
+
 export type AnalyticsInterval = "day" | "week" | "month";
 
 export type TrendPoint = {

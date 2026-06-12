@@ -14,6 +14,7 @@ from app.schemas.group import (
     GroupMilestoneCreate,
     GroupMilestoneRead,
     GroupMilestoneUpdate,
+    GroupProgressRead,
     GroupRead,
     GroupTaskCreate,
     GroupTaskRead,
@@ -40,6 +41,7 @@ from app.services.group_milestone_service import (
     list_milestones,
     update_milestone,
 )
+from app.services.group_progress_service import group_progress
 
 
 router = APIRouter(prefix="/groups", tags=["groups"])
@@ -133,6 +135,15 @@ async def create_group_task_route(
     db: AsyncSession = Depends(get_db),
 ) -> GroupTaskRead:
     return await create_group_task(group_id, payload, current_user, db)
+
+
+@router.get("/{group_id}/progress", response_model=GroupProgressRead)
+async def read_group_progress(
+    group_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GroupProgressRead:
+    return await group_progress(group_id, current_user.id, db)
 
 
 @router.put("/tasks/{task_id}", response_model=GroupTaskRead)

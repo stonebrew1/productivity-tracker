@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,6 +28,7 @@ class ProductivityGroup(Base):
     invitations = relationship("GroupInvitation", back_populates="group", cascade="all, delete-orphan")
     tasks = relationship("GroupTask", back_populates="group", cascade="all, delete-orphan")
     milestones = relationship("GroupMilestone", back_populates="group", cascade="all, delete-orphan")
+    xp_awards = relationship("GroupXpAward", back_populates="group", cascade="all, delete-orphan")
 
 
 class GroupMember(Base):
@@ -119,9 +120,35 @@ class GroupMilestone(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     group_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("productivity_groups.id", ondelete="CASCADE"), index=True
     )
 
     group = relationship("ProductivityGroup", back_populates="milestones")
     tasks = relationship("GroupTask", back_populates="milestone")
+
+
+class GroupXpAward(Base):
+    __tablename__ = "group_xp_awards"
+    __table_args__ = (
+        UniqueConstraint("source_key", name="uq_group_xp_awards_source"),
+        Index("ix_group_xp_awards_group_awarded", "group_id", "awarded_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    source_key: Mapped[str] = mapped_column(String(160))
+    reason: Mapped[str] = mapped_column(String(240))
+    amount: Mapped[int] = mapped_column(Integer)
+    awarded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    group_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("productivity_groups.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+
+    group = relationship("ProductivityGroup", back_populates="xp_awards")
+    user = relationship("User")

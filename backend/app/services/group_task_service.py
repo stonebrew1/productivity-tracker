@@ -142,6 +142,10 @@ async def update_group_task(
                     actor_id=user.id,
                 )
             )
+    if task.status == TaskStatus.DONE:
+        from app.services.group_progress_service import award_task_completion
+
+        await award_task_completion(task, db)
     await db.commit()
     await db.refresh(task)
     return await task_read(task, user.id, db)

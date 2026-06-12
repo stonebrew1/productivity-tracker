@@ -9,6 +9,7 @@ import type {
   GamificationDashboard,
   GroupInvitation,
   GroupMilestone,
+  GroupProgress,
   GroupTask,
   LeaderboardEntry,
   Person,
@@ -141,6 +142,7 @@ export const api = {
   rotateGroupCode: (id: string) =>
     request<ProductivityGroup>(`/groups/${id}/invite-code`, { method: "POST" }),
   groupTasks: (groupId: string) => request<GroupTask[]>(`/groups/${groupId}/tasks`),
+  groupProgress: (groupId: string) => request<GroupProgress>(`/groups/${groupId}/progress`),
   createGroupTask: (groupId: string, payload: {
     title: string;
     description?: string | null;

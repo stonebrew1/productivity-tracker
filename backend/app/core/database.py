@@ -113,6 +113,12 @@ async def create_database_schema() -> None:
                         "ON group_tasks (milestone_id)"
                     )
                 )
+                await conn.execute(
+                    text(
+                        "ALTER TABLE group_milestones "
+                        "ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ"
+                    )
+                )
             return
         except Exception as exc:
             last_error = exc

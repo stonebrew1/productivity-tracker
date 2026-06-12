@@ -111,3 +111,31 @@ class GroupMilestoneRead(BaseModel):
     progress_percent: int
     is_complete: bool
     can_manage: bool
+
+
+class GroupLeaderboardEntry(BaseModel):
+    rank: int
+    user_id: UUID
+    display_name: str
+    avatar_url: str | None
+    group_xp: int
+    completed_tasks: int
+    contribution_streak: int
+    is_current_user: bool
+
+
+class GroupRewardRead(BaseModel):
+    id: UUID
+    user_id: UUID
+    display_name: str
+    reason: str
+    amount: int
+    awarded_at: datetime
+
+
+class GroupProgressRead(BaseModel):
+    total_group_xp: int
+    completed_tasks: int
+    team_streak: int
+    leaderboard: list[GroupLeaderboardEntry]
+    recent_rewards: list[GroupRewardRead]

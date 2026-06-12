@@ -8,11 +8,11 @@ import {
   useSensor,
   useSensors
 } from "@dnd-kit/core";
-import { CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Copy, Crown, Flag, GripVertical, KeyRound, LoaderCircle, Pencil, Plus, RefreshCw, Save, Shield, Trash2, UserPlus, UsersRound, X } from "lucide-react";
+import { Award, CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Copy, Crown, Flag, Flame, GripVertical, KeyRound, LoaderCircle, Pencil, Plus, RefreshCw, Save, Shield, Trash2, Trophy, UserPlus, UsersRound, X, Zap } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { GroupInvitation, GroupMilestone, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
+import type { GroupInvitation, GroupMilestone, GroupProgress, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
 
 const TASK_COLUMNS = [
   ["todo", "To do", Circle],
@@ -33,6 +33,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
   const [copied, setCopied] = useState(false);
   const [tasks, setTasks] = useState<GroupTask[]>([]);
   const [milestones, setMilestones] = useState<GroupMilestone[]>([]);
+  const [progress, setProgress] = useState<GroupProgress | null>(null);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskPriority, setTaskPriority] = useState<TaskPriority>("medium");
@@ -70,12 +71,15 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
   useEffect(() => {
     if (!selectedId) {
       setTasks([]);
+      setMilestones([]);
+      setProgress(null);
       return;
     }
-    Promise.all([api.groupTasks(selectedId), api.groupMilestones(selectedId)])
-      .then(([nextTasks, nextMilestones]) => {
+    Promise.all([api.groupTasks(selectedId), api.groupMilestones(selectedId), api.groupProgress(selectedId)])
+      .then(([nextTasks, nextMilestones, nextProgress]) => {
         setTasks(nextTasks);
         setMilestones(nextMilestones);
+        setProgress(nextProgress);
       })
       .catch((error) => onError(error instanceof Error ? error.message : "Unable to load group tasks"));
   }, [selectedId]);
@@ -118,12 +122,14 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
 
   async function refreshTasks(groupId = selectedId) {
     if (!groupId) return;
-    const [nextTasks, nextMilestones] = await Promise.all([
+    const [nextTasks, nextMilestones, nextProgress] = await Promise.all([
       api.groupTasks(groupId),
-      api.groupMilestones(groupId)
+      api.groupMilestones(groupId),
+      api.groupProgress(groupId)
     ]);
     setTasks(nextTasks);
     setMilestones(nextMilestones);
+    setProgress(nextProgress);
   }
 
   async function submitGroupTask(event: FormEvent) {
@@ -223,7 +229,14 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
     try {
       const updated = await api.updateGroupTask(taskId, { status });
       setTasks((items) => items.map((task) => task.id === taskId ? updated : task));
-      if (selectedId) setMilestones(await api.groupMilestones(selectedId));
+      if (selectedId) {
+        const [nextMilestones, nextProgress] = await Promise.all([
+          api.groupMilestones(selectedId),
+          api.groupProgress(selectedId)
+        ]);
+        setMilestones(nextMilestones);
+        setProgress(nextProgress);
+      }
     } catch (error) {
       setTasks(previousTasks);
       onError(error instanceof Error ? error.message : "Unable to move group task");
@@ -329,6 +342,44 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                 <div><span>{selected.role === "leader" ? "You lead this group" : "Member workspace"}</span><h2>{selected.name}</h2><p>{selected.description || "No group description yet."}</p></div>
                 <div className="group-hero-stat"><strong>{selected.member_count}</strong><span>members</span></div>
               </section>
+
+              {progress && (
+                <section className="group-progress">
+                  <div className="group-progress-metrics">
+                    <div><span className="group-progress-icon xp"><Zap size={17} /></span><span><strong>{progress.total_group_xp}</strong><small>group XP</small></span></div>
+                    <div><span className="group-progress-icon done"><CheckCircle2 size={17} /></span><span><strong>{progress.completed_tasks}</strong><small>tasks completed</small></span></div>
+                    <div><span className="group-progress-icon streak"><Flame size={17} /></span><span><strong>{progress.team_streak}</strong><small>day team streak</small></span></div>
+                  </div>
+                  <div className="group-progress-grid">
+                    <div className="group-ranking">
+                      <div className="section-heading"><h2>Team ranking</h2><span><Trophy size={13} /> Contributions</span></div>
+                      <div className="group-ranking-list">
+                        {progress.leaderboard.map((entry) => (
+                          <article className={entry.is_current_user ? "current" : ""} key={entry.user_id}>
+                            <span className="group-rank">{entry.rank === 1 ? <Crown size={15} /> : entry.rank}</span>
+                            <span className="avatar">{entry.display_name.slice(0, 1).toUpperCase()}</span>
+                            <div><strong>{entry.display_name}</strong><small>{entry.completed_tasks} tasks - {entry.contribution_streak} day streak</small></div>
+                            <b>{entry.group_xp} XP</b>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="group-rewards">
+                      <div className="section-heading"><h2>Recent rewards</h2><span><Award size={13} /> Activity</span></div>
+                      <div className="group-reward-list">
+                        {progress.recent_rewards.map((reward) => (
+                          <article key={reward.id}>
+                            <span className="group-reward-icon"><Zap size={14} /></span>
+                            <div><strong>{reward.display_name}</strong><small>{reward.reason}</small></div>
+                            <b>+{reward.amount}</b>
+                          </article>
+                        ))}
+                        {progress.recent_rewards.length === 0 && <p className="muted compact-copy">Complete a shared task to earn the first reward.</p>}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
 
               {selected.role === "leader" && (
                 <section className="leader-tools">
