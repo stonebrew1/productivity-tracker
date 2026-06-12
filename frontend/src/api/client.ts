@@ -9,6 +9,7 @@ import type {
   GamificationDashboard,
   GroupActivity,
   GroupActivityComment,
+  GroupAnalytics,
   GroupInvitation,
   GroupMilestone,
   GroupProgress,
@@ -146,6 +147,7 @@ export const api = {
   groupTasks: (groupId: string) => request<GroupTask[]>(`/groups/${groupId}/tasks`),
   groupProgress: (groupId: string) => request<GroupProgress>(`/groups/${groupId}/progress`),
   groupActivity: (groupId: string) => request<GroupActivity[]>(`/groups/${groupId}/activity`),
+  groupAnalytics: (groupId: string) => request<GroupAnalytics>(`/groups/${groupId}/analytics`),
   createGroupUpdate: (groupId: string, content: string) =>
     request<GroupActivity>(`/groups/${groupId}/activity`, {
       method: "POST",

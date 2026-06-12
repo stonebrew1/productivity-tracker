@@ -11,6 +11,7 @@ from app.schemas.group import (
     GroupActivityCreate,
     GroupActivityCommentRead,
     GroupActivityRead,
+    GroupAnalyticsRead,
     GroupInvitationRead,
     GroupInvite,
     GroupJoin,
@@ -51,6 +52,7 @@ from app.services.group_activity_service import (
     delete_activity_comment,
     list_group_activity,
 )
+from app.services.group_analytics_service import group_analytics
 
 
 router = APIRouter(prefix="/groups", tags=["groups"])
@@ -162,6 +164,15 @@ async def read_group_activity(
     db: AsyncSession = Depends(get_db),
 ) -> list[GroupActivityRead]:
     return await list_group_activity(group_id, current_user.id, db)
+
+
+@router.get("/{group_id}/analytics", response_model=GroupAnalyticsRead)
+async def read_group_analytics(
+    group_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GroupAnalyticsRead:
+    return await group_analytics(group_id, current_user.id, db)
 
 
 @router.post("/{group_id}/activity", response_model=GroupActivityRead, status_code=201)

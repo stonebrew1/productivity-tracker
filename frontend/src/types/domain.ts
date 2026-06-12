@@ -311,6 +311,31 @@ export type GroupActivity = {
   comments: GroupActivityComment[];
 };
 
+export type GroupAnalytics = {
+  total_tasks: number;
+  completion_rate: number;
+  active_tasks: number;
+  overdue_tasks: number;
+  due_soon_tasks: number;
+  average_cycle_days: number;
+  workload_balance_score: number;
+  velocity: { date: string; completed: number }[];
+  workload: {
+    user_id: string;
+    display_name: string;
+    active_tasks: number;
+    completed_tasks: number;
+    overdue_tasks: number;
+  }[];
+  milestone_risks: {
+    milestone_id: string;
+    title: string;
+    progress_percent: number;
+    target_date: string | null;
+    risk: "complete" | "unplanned" | "overdue" | "at_risk" | "on_track";
+  }[];
+};
+
 export type AnalyticsInterval = "day" | "week" | "month";
 
 export type TrendPoint = {

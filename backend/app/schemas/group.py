@@ -166,3 +166,37 @@ class GroupActivityRead(BaseModel):
     created_at: datetime
     author: GroupActivityAuthor
     comments: list[GroupActivityCommentRead]
+
+
+class GroupVelocityPoint(BaseModel):
+    date: datetime
+    completed: int
+
+
+class GroupWorkloadEntry(BaseModel):
+    user_id: UUID
+    display_name: str
+    active_tasks: int
+    completed_tasks: int
+    overdue_tasks: int
+
+
+class GroupMilestoneRisk(BaseModel):
+    milestone_id: UUID
+    title: str
+    progress_percent: int
+    target_date: datetime | None
+    risk: str
+
+
+class GroupAnalyticsRead(BaseModel):
+    total_tasks: int
+    completion_rate: int
+    active_tasks: int
+    overdue_tasks: int
+    due_soon_tasks: int
+    average_cycle_days: float
+    workload_balance_score: int
+    velocity: list[GroupVelocityPoint]
+    workload: list[GroupWorkloadEntry]
+    milestone_risks: list[GroupMilestoneRisk]

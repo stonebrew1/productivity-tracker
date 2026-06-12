@@ -8,11 +8,11 @@ import {
   useSensor,
   useSensors
 } from "@dnd-kit/core";
-import { Activity, Award, CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Copy, Crown, Flag, Flame, GripVertical, KeyRound, LoaderCircle, MessageCircle, Pencil, Plus, RefreshCw, Save, Send, Shield, Trash2, Trophy, UserPlus, UsersRound, X, Zap } from "lucide-react";
+import { Activity, AlertTriangle, Award, BarChart3, CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Clock3, Copy, Crown, Flag, Flame, Gauge, GripVertical, KeyRound, LoaderCircle, MessageCircle, Pencil, Plus, RefreshCw, Save, Send, Shield, Trash2, Trophy, UserPlus, UsersRound, X, Zap } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { GroupActivity, GroupInvitation, GroupMilestone, GroupProgress, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
+import type { GroupActivity, GroupAnalytics, GroupInvitation, GroupMilestone, GroupProgress, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
 
 const TASK_COLUMNS = [
   ["todo", "To do", Circle],
@@ -35,6 +35,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
   const [milestones, setMilestones] = useState<GroupMilestone[]>([]);
   const [progress, setProgress] = useState<GroupProgress | null>(null);
   const [activity, setActivity] = useState<GroupActivity[]>([]);
+  const [analytics, setAnalytics] = useState<GroupAnalytics | null>(null);
   const [updateDraft, setUpdateDraft] = useState("");
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [openActivityId, setOpenActivityId] = useState<string | null>(null);
@@ -78,14 +79,16 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       setMilestones([]);
       setProgress(null);
       setActivity([]);
+      setAnalytics(null);
       return;
     }
-    Promise.all([api.groupTasks(selectedId), api.groupMilestones(selectedId), api.groupProgress(selectedId), api.groupActivity(selectedId)])
-      .then(([nextTasks, nextMilestones, nextProgress, nextActivity]) => {
+    Promise.all([api.groupTasks(selectedId), api.groupMilestones(selectedId), api.groupProgress(selectedId), api.groupActivity(selectedId), api.groupAnalytics(selectedId)])
+      .then(([nextTasks, nextMilestones, nextProgress, nextActivity, nextAnalytics]) => {
         setTasks(nextTasks);
         setMilestones(nextMilestones);
         setProgress(nextProgress);
         setActivity(nextActivity);
+        setAnalytics(nextAnalytics);
       })
       .catch((error) => onError(error instanceof Error ? error.message : "Unable to load group tasks"));
   }, [selectedId]);
@@ -128,16 +131,18 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
 
   async function refreshTasks(groupId = selectedId) {
     if (!groupId) return;
-    const [nextTasks, nextMilestones, nextProgress, nextActivity] = await Promise.all([
+    const [nextTasks, nextMilestones, nextProgress, nextActivity, nextAnalytics] = await Promise.all([
       api.groupTasks(groupId),
       api.groupMilestones(groupId),
       api.groupProgress(groupId),
-      api.groupActivity(groupId)
+      api.groupActivity(groupId),
+      api.groupAnalytics(groupId)
     ]);
     setTasks(nextTasks);
     setMilestones(nextMilestones);
     setProgress(nextProgress);
     setActivity(nextActivity);
+    setAnalytics(nextAnalytics);
   }
 
   async function refreshActivity(groupId = selectedId) {
@@ -441,6 +446,8 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                   </div>
                 </section>
               )}
+
+              {analytics && <GroupInsights analytics={analytics} />}
 
               {selected.role === "leader" && (
                 <section className="leader-tools">
@@ -808,4 +815,57 @@ function relativeGroupTime(value: string) {
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
   return new Date(value).toLocaleDateString();
+}
+
+function GroupInsights({ analytics }: { analytics: GroupAnalytics }) {
+  const velocityMax = Math.max(1, ...analytics.velocity.map((point) => point.completed));
+  const workloadMax = Math.max(1, ...analytics.workload.map((entry) => entry.active_tasks));
+  return (
+    <section className="group-insights">
+      <div className="section-heading">
+        <h2>Delivery insights</h2>
+        <span><BarChart3 size={13} />Last 14 days</span>
+      </div>
+      <div className="group-insight-metrics">
+        <div><span><Gauge size={15} /></span><strong>{analytics.completion_rate}%</strong><small>completion</small></div>
+        <div className={analytics.overdue_tasks ? "warning" : ""}><span><AlertTriangle size={15} /></span><strong>{analytics.overdue_tasks}</strong><small>overdue</small></div>
+        <div><span><Clock3 size={15} /></span><strong>{analytics.average_cycle_days}d</strong><small>average cycle</small></div>
+        <div><span><UsersRound size={15} /></span><strong>{analytics.workload_balance_score}</strong><small>balance score</small></div>
+      </div>
+      <div className="group-insight-grid">
+        <div className="group-velocity">
+          <header><strong>Completion velocity</strong><span>{analytics.due_soon_tasks} due in 7 days</span></header>
+          <div className="group-velocity-chart">
+            {analytics.velocity.map((point) => (
+              <div key={point.date}>
+                <i title={`${point.completed} completed`} style={{ height: `${Math.max(4, (point.completed / velocityMax) * 100)}%` }} />
+                <time>{new Date(point.date).toLocaleDateString(undefined, { weekday: "narrow" })}</time>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="group-workload">
+          <header><strong>Active workload</strong><span>{analytics.active_tasks} open tasks</span></header>
+          {analytics.workload.map((entry) => (
+            <div className="group-workload-row" key={entry.user_id}>
+              <span>{entry.display_name}</span>
+              <div><i style={{ width: `${(entry.active_tasks / workloadMax) * 100}%` }} /></div>
+              <b>{entry.active_tasks}</b>
+              {entry.overdue_tasks > 0 && <small>{entry.overdue_tasks} late</small>}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="group-risk-list">
+        <header><strong>Milestone health</strong><span>{analytics.milestone_risks.length} tracked</span></header>
+        {analytics.milestone_risks.map((item) => (
+          <article key={item.milestone_id}>
+            <div><strong>{item.title}</strong><small>{item.progress_percent}% complete{item.target_date ? ` - ${new Date(item.target_date).toLocaleDateString()}` : ""}</small></div>
+            <span className={`risk-label ${item.risk}`}>{item.risk.replace("_", " ")}</span>
+          </article>
+        ))}
+        {analytics.milestone_risks.length === 0 && <p className="muted compact-copy">Add milestones to start delivery risk tracking.</p>}
+      </div>
+    </section>
+  );
 }
