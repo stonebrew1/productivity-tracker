@@ -147,6 +147,8 @@ p { color: var(--muted); line-height: 1.6; }
 .today-score strong { color: #a78bfa; font-size: 1.75rem; }
 .today-score span { color: var(--muted); font-size: .78rem; }
 .quick-add { display: grid; grid-template-columns: minmax(230px, 1fr) 150px 150px 145px 82px 44px 44px 80px; gap: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); padding: 12px; }
+.quick-add-wrap { position: relative; }
+.success-message { display: flex; align-items: center; gap: 7px; border: 1px solid rgba(16,185,129,.35); border-radius: 7px; background: rgba(16,185,129,.1); color: #6ee7b7; padding: 9px 12px; margin-bottom: 8px; font-size: .72rem; font-weight: 700; }
 .quick-add-title, .estimate-input { display: flex; align-items: center; gap: 8px; min-width: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--muted); padding-left: 12px; }
 .quick-add-title input, .estimate-input input { min-width: 0; border: 0; background: transparent; box-shadow: none; padding-left: 0; }
 .focus-toggle, .visibility-toggle { display: grid; place-items: center; min-height: 42px; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); }
