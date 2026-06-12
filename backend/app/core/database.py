@@ -98,6 +98,21 @@ async def create_database_schema() -> None:
                         "ON xp_awards (source_key) WHERE source_key IS NOT NULL"
                     )
                 )
+                await conn.execute(
+                    text(
+                        """
+                        ALTER TABLE group_tasks
+                        ADD COLUMN IF NOT EXISTS milestone_id UUID
+                        REFERENCES group_milestones(id) ON DELETE SET NULL
+                        """
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS ix_group_tasks_milestone_id "
+                        "ON group_tasks (milestone_id)"
+                    )
+                )
             return
         except Exception as exc:
             last_error = exc

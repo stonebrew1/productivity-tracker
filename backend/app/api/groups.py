@@ -11,6 +11,9 @@ from app.schemas.group import (
     GroupInvitationRead,
     GroupInvite,
     GroupJoin,
+    GroupMilestoneCreate,
+    GroupMilestoneRead,
+    GroupMilestoneUpdate,
     GroupRead,
     GroupTaskCreate,
     GroupTaskRead,
@@ -30,6 +33,12 @@ from app.services.group_task_service import (
     delete_group_task,
     list_group_tasks,
     update_group_task,
+)
+from app.services.group_milestone_service import (
+    create_milestone,
+    delete_milestone,
+    list_milestones,
+    update_milestone,
 )
 
 
@@ -143,3 +152,41 @@ async def delete_group_task_route(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     await delete_group_task(task_id, current_user.id, db)
+
+
+@router.get("/{group_id}/milestones", response_model=list[GroupMilestoneRead])
+async def read_group_milestones(
+    group_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[GroupMilestoneRead]:
+    return await list_milestones(group_id, current_user.id, db)
+
+
+@router.post("/{group_id}/milestones", response_model=GroupMilestoneRead, status_code=201)
+async def create_group_milestone_route(
+    group_id: UUID,
+    payload: GroupMilestoneCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GroupMilestoneRead:
+    return await create_milestone(group_id, payload, current_user.id, db)
+
+
+@router.put("/milestones/{milestone_id}", response_model=GroupMilestoneRead)
+async def update_group_milestone_route(
+    milestone_id: UUID,
+    payload: GroupMilestoneUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GroupMilestoneRead:
+    return await update_milestone(milestone_id, payload, current_user.id, db)
+
+
+@router.delete("/milestones/{milestone_id}", status_code=204)
+async def delete_group_milestone_route(
+    milestone_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await delete_milestone(milestone_id, current_user.id, db)

@@ -365,10 +365,10 @@ p { color: var(--muted); line-height: 1.6; }
 .group-invitations article button:last-child:hover { color: #f87171; }
 .groups-layout { display: grid; grid-template-columns: minmax(230px, .72fr) minmax(0, 1.65fr); align-items: start; gap: 18px; }
 .groups-sidebar { display: grid; gap: 14px; }
-.group-list-panel, .group-actions-panel, .group-hero, .leader-tools, .group-work, .group-roster {
+.group-list-panel, .group-actions-panel, .group-hero, .leader-tools, .group-milestones, .group-work, .group-roster {
   border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1);
 }
-.group-list-panel, .group-actions-panel, .leader-tools, .group-work, .group-roster { padding: 16px; }
+.group-list-panel, .group-actions-panel, .leader-tools, .group-milestones, .group-work, .group-roster { padding: 16px; }
 .group-list-panel > button {
   display: grid; width: 100%; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 9px;
   border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--text); padding: 9px; text-align: left;
@@ -437,6 +437,28 @@ p { color: var(--muted); line-height: 1.6; }
 .group-roster article div span { color: var(--muted); font-size: .61rem; }
 .member-role { display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; background: var(--surface-2); color: var(--muted); padding: 5px 8px; font-size: .59rem; text-transform: capitalize; }
 .member-role.leader { background: rgba(245,158,11,.1); color: var(--amber); }
+.milestone-form { display: grid; grid-template-columns: minmax(150px,1fr) minmax(180px,1.5fr) 135px auto auto; gap: 8px; margin-bottom: 14px; }
+.milestone-form input, .milestone-form button { min-height: 36px; font-size: .67rem; }
+.milestone-form button { padding-inline: 13px; }
+.milestone-form .milestone-cancel { width: 36px; border: 1px solid var(--border); background: transparent; color: var(--muted); padding: 0; }
+.milestone-form .milestone-cancel:hover { background: var(--surface-3); color: var(--text); }
+.milestone-list { display: grid; gap: 8px; }
+.milestone-list article { display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: 11px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); padding: 12px; }
+.milestone-list article.complete { border-color: rgba(16,185,129,.35); background: rgba(16,185,129,.06); }
+.milestone-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 8px; background: var(--violet-dim); color: #a78bfa; }
+.milestone-list article.complete .milestone-icon { background: rgba(16,185,129,.12); color: var(--emerald); }
+.milestone-copy { min-width: 0; }
+.milestone-copy header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.milestone-copy strong { overflow-wrap: anywhere; font-size: .75rem; }
+.milestone-copy time, .milestone-copy small { color: var(--muted); font-size: .59rem; }
+.milestone-copy p { margin: 4px 0 8px; font-size: .64rem; line-height: 1.45; }
+.milestone-progress { height: 5px; overflow: hidden; border-radius: 999px; background: var(--surface-3); margin-bottom: 6px; }
+.milestone-progress i { display: block; height: 100%; border-radius: inherit; background: var(--violet-light); }
+.milestone-list article.complete .milestone-progress i { background: var(--emerald); }
+.milestone-actions { display: flex; gap: 5px; }
+.milestone-actions button { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); }
+.milestone-actions button:first-child:hover { color: #a78bfa; }
+.milestone-actions button:last-child:hover { color: #f87171; }
 .group-task-form { display: grid; grid-template-columns: minmax(170px,1.5fr) minmax(130px,1fr) 110px 135px; align-items: end; gap: 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); padding: 12px; margin-bottom: 15px; }
 .group-task-form > div { display: grid; gap: 5px; min-width: 0; }
 .group-task-form label { color: var(--muted); font-size: .6rem; }
@@ -471,8 +493,9 @@ p { color: var(--muted); line-height: 1.6; }
 .group-task-card p { margin: 6px 0 8px 14px; font-size: .62rem; line-height: 1.45; overflow-wrap: anywhere; }
 .group-task-meta { display: flex; flex-wrap: wrap; gap: 5px 10px; margin: 8px 0; }
 .group-task-meta span { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: .57rem; }
-.group-task-card > select, .group-task-card footer select { min-height: 30px; border-radius: 6px; padding: 0 8px; font-size: .59rem; }
-.group-task-card > select { margin-bottom: 6px; }
+.group-task-card > select, .group-task-card footer select, .group-task-admin-fields select { min-height: 30px; border-radius: 6px; padding: 0 8px; font-size: .59rem; }
+.group-task-admin-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; margin-bottom: 6px; }
+.task-milestone { display: flex; align-items: center; gap: 4px; width: fit-content; max-width: 100%; border-radius: 5px; background: var(--violet-dim); color: #b9a7f8; padding: 4px 6px; margin-bottom: 6px; font-size: .56rem; }
 .group-task-card footer { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 6px; }
 .group-task-card footer > span { color: var(--muted); font-size: .57rem; }
 .group-task-card footer button { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); }
@@ -597,6 +620,8 @@ p { color: var(--muted); line-height: 1.6; }
   .group-list-panel > .section-heading { position: sticky; left: 0; }
   .group-list-panel > button { display: inline-grid; width: min(230px, 75vw); margin-right: 5px; vertical-align: top; }
   .leader-tool-grid { grid-template-columns: 1fr; }
+  .milestone-form { grid-template-columns: 1fr 1.3fr; }
+  .milestone-form button { grid-column: auto; }
   .group-task-form { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .group-task-form .group-task-description { grid-column: 1 / -1; }
   .group-task-form > button { grid-column: 1 / -1; }
@@ -643,6 +668,10 @@ p { color: var(--muted); line-height: 1.6; }
   .member-role { grid-column: 2; justify-self: start; }
   .group-invitations article { grid-template-columns: 34px minmax(0,1fr); }
   .group-invitations article > div:last-child { grid-column: 2; }
+  .milestone-form { grid-template-columns: 1fr; }
+  .milestone-list article { grid-template-columns: 34px minmax(0,1fr); }
+  .milestone-actions { grid-column: 2; }
+  .group-task-admin-fields { grid-template-columns: 1fr; }
   .group-task-form { grid-template-columns: 1fr; }
   .group-task-form .group-task-description, .group-task-form > button { grid-column: auto; }
 }

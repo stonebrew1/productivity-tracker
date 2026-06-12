@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.group import GroupMember, GroupTask, ProductivityGroup
+from app.models.group import GroupMember, GroupMilestone, GroupTask, ProductivityGroup
 from app.models.social import Notification
 from app.models.task import TaskStatus
 from app.models.user import User
@@ -24,6 +24,7 @@ async def require_membership(group_id: UUID, user_id: UUID, db: AsyncSession) ->
 async def task_read(task: GroupTask, viewer_id: UUID, db: AsyncSession) -> GroupTaskRead:
     membership = await require_membership(task.group_id, viewer_id, db)
     assignee = await db.get(User, task.assigned_to_id)
+    milestone = await db.get(GroupMilestone, task.milestone_id) if task.milestone_id else None
     return GroupTaskRead(
         id=task.id,
         group_id=task.group_id,
@@ -37,6 +38,8 @@ async def task_read(task: GroupTask, viewer_id: UUID, db: AsyncSession) -> Group
         assigned_to_id=task.assigned_to_id,
         assignee_name=(assignee.display_name or assignee.email.split("@")[0]) if assignee else "Unknown",
         created_by_id=task.created_by_id,
+        milestone_id=task.milestone_id,
+        milestone_title=milestone.title if milestone else None,
         can_manage=membership.role == "leader",
         can_update_status=membership.role == "leader" or task.assigned_to_id == viewer_id,
     )
@@ -68,6 +71,7 @@ async def create_group_task(
     )
     if not assignee_membership:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Assignee is not a group member.")
+    await validate_milestone(payload.milestone_id, group_id, db)
     task = GroupTask(**payload.model_dump(), group_id=group_id, created_by_id=leader.id)
     db.add(task)
     if payload.assigned_to_id != leader.id:
@@ -106,6 +110,8 @@ async def update_group_task(
         )
         if not assignee_membership:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Assignee is not a group member.")
+    if "milestone_id" in changes:
+        await validate_milestone(changes["milestone_id"], task.group_id, db)
     for field, value in changes.items():
         setattr(task, field, value)
     if payload.status == TaskStatus.DONE and not task.completed_at:
@@ -150,3 +156,13 @@ async def delete_group_task(task_id: UUID, leader_id: UUID, db: AsyncSession) ->
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Group leader access required.")
     await db.delete(task)
     await db.commit()
+
+
+async def validate_milestone(
+    milestone_id: UUID | None, group_id: UUID, db: AsyncSession
+) -> None:
+    if not milestone_id:
+        return
+    milestone = await db.get(GroupMilestone, milestone_id)
+    if not milestone or milestone.group_id != group_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid group milestone.")

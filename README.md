@@ -57,6 +57,8 @@ Then open:
 - `POST /api/groups/{group_id}/invite-code`
 - `GET/POST /api/groups/{group_id}/tasks`
 - `PUT/DELETE /api/groups/tasks/{task_id}`
+- `GET/POST /api/groups/{group_id}/milestones`
+- `PUT/DELETE /api/groups/milestones/{milestone_id}`
 - `GET /api/gamification`
 
 ## Notes
@@ -82,6 +84,8 @@ Phase 6 adds one-to-one accountability commitments. Owners can invite a followed
 Group Phase 1 adds persistent group workspaces with leader and member roles. A leader can create a group, invite followed connections, copy or rotate a join code, and inspect the participant roster. Users can accept or decline direct invitations or join immediately with a code; join codes are visible only to the leader.
 
 Group Phase 2 adds a shared task board. Leaders create tasks, set priority and deadlines, assign or reassign group members, update any task, and remove obsolete work. Assigned participants can move their own tasks through to-do, in-progress, and done states, while other members retain read-only visibility.
+
+Group Phase 3 adds leader-configured milestones. Shared tasks can be linked or moved between milestones, and progress is derived automatically from the linked tasks' completion state. Deleting a milestone preserves its tasks and returns them to the unlinked pool.
 
 The backend currently creates new tables automatically on startup. Moving all schema changes to Alembic migrations is the next infrastructure milestone.
 
@@ -118,4 +122,4 @@ For the Phase 5 demo, the seeded **Public momentum sprint** begins at 12/13 with
 
 For the Phase 6 demo, **Prepare project defense slides** is a public in-progress task with Maya already accepted as Alex's accountability partner. Complete it from Tasks or Today: Alex and Maya each receive 15 XP, Maya receives a completion notification, and the commitment moves from accepted to completed.
 
-For the group demo, Alex leads **Bachelor Project Lab** with Maya already participating. Its shared board opens with four tasks across all workflow states and mixed assignments. Alex can create, reassign, update, and delete tasks; sign in as Maya to move her assigned work while seeing Alex's tasks as read-only. The leader can also copy the seeded `MOMENTUM` code, rotate it, or invite followed connections. Sign in as `leo@example.com` with the same demo password to accept the pending invitation.
+For the group demo, Alex leads **Bachelor Project Lab** with Maya already participating. Three milestones show completed, active, and early-stage progress driven by four linked tasks. Alex can configure milestones and create, reassign, drag, update, or delete tasks; sign in as Maya to move her assigned work while seeing Alex's tasks as read-only. The leader can also copy the seeded `MOMENTUM` code, rotate it, or invite followed connections. Sign in as `leo@example.com` with the same demo password to accept the pending invitation.

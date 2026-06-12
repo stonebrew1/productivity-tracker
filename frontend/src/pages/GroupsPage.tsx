@@ -8,11 +8,11 @@ import {
   useSensor,
   useSensors
 } from "@dnd-kit/core";
-import { CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Copy, Crown, GripVertical, KeyRound, LoaderCircle, Plus, RefreshCw, Shield, Trash2, UserPlus, UsersRound, X } from "lucide-react";
+import { CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Copy, Crown, Flag, GripVertical, KeyRound, LoaderCircle, Pencil, Plus, RefreshCw, Save, Shield, Trash2, UserPlus, UsersRound, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { GroupInvitation, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
+import type { GroupInvitation, GroupMilestone, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
 
 const TASK_COLUMNS = [
   ["todo", "To do", Circle],
@@ -32,11 +32,17 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [tasks, setTasks] = useState<GroupTask[]>([]);
+  const [milestones, setMilestones] = useState<GroupMilestone[]>([]);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskPriority, setTaskPriority] = useState<TaskPriority>("medium");
   const [taskDeadline, setTaskDeadline] = useState("");
   const [taskAssignee, setTaskAssignee] = useState("");
+  const [taskMilestone, setTaskMilestone] = useState("");
+  const [milestoneTitle, setMilestoneTitle] = useState("");
+  const [milestoneDescription, setMilestoneDescription] = useState("");
+  const [milestoneDate, setMilestoneDate] = useState("");
+  const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const dragSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
@@ -66,8 +72,11 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       setTasks([]);
       return;
     }
-    api.groupTasks(selectedId)
-      .then(setTasks)
+    Promise.all([api.groupTasks(selectedId), api.groupMilestones(selectedId)])
+      .then(([nextTasks, nextMilestones]) => {
+        setTasks(nextTasks);
+        setMilestones(nextMilestones);
+      })
       .catch((error) => onError(error instanceof Error ? error.message : "Unable to load group tasks"));
   }, [selectedId]);
 
@@ -109,7 +118,12 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
 
   async function refreshTasks(groupId = selectedId) {
     if (!groupId) return;
-    setTasks(await api.groupTasks(groupId));
+    const [nextTasks, nextMilestones] = await Promise.all([
+      api.groupTasks(groupId),
+      api.groupMilestones(groupId)
+    ]);
+    setTasks(nextTasks);
+    setMilestones(nextMilestones);
   }
 
   async function submitGroupTask(event: FormEvent) {
@@ -123,12 +137,14 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
         description: taskDescription || null,
         priority: taskPriority,
         deadline: taskDeadline ? new Date(`${taskDeadline}T23:59:59`).toISOString() : null,
-        assigned_to_id: taskAssignee
+        assigned_to_id: taskAssignee,
+        milestone_id: taskMilestone || null
       });
       setTaskTitle("");
       setTaskDescription("");
       setTaskPriority("medium");
       setTaskDeadline("");
+      setTaskMilestone("");
       await refreshTasks(selected.id);
     } catch (error) {
       onError(error instanceof Error ? error.message : "Unable to create group task");
@@ -137,7 +153,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
     }
   }
 
-  async function changeTask(taskId: string, payload: { status?: TaskStatus; assigned_to_id?: string }) {
+  async function changeTask(taskId: string, payload: { status?: TaskStatus; assigned_to_id?: string; milestone_id?: string | null }) {
     setBusy(true);
     onError(null);
     try {
@@ -145,6 +161,54 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       await refreshTasks();
     } catch (error) {
       onError(error instanceof Error ? error.message : "Unable to update group task");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitMilestone(event: FormEvent) {
+    event.preventDefault();
+    if (!selected) return;
+    setBusy(true);
+    onError(null);
+    const payload = {
+      title: milestoneTitle,
+      description: milestoneDescription || null,
+      target_date: milestoneDate ? new Date(`${milestoneDate}T23:59:59`).toISOString() : null
+    };
+    try {
+      if (editingMilestoneId) {
+        await api.updateGroupMilestone(editingMilestoneId, payload);
+      } else {
+        await api.createGroupMilestone(selected.id, payload);
+      }
+      setMilestoneTitle("");
+      setMilestoneDescription("");
+      setMilestoneDate("");
+      setEditingMilestoneId(null);
+      await refreshTasks(selected.id);
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to save milestone");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function editMilestone(milestone: GroupMilestone) {
+    setEditingMilestoneId(milestone.id);
+    setMilestoneTitle(milestone.title);
+    setMilestoneDescription(milestone.description ?? "");
+    setMilestoneDate(milestone.target_date?.slice(0, 10) ?? "");
+  }
+
+  async function removeMilestone(milestoneId: string) {
+    setBusy(true);
+    onError(null);
+    try {
+      await api.deleteGroupMilestone(milestoneId);
+      await refreshTasks();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to delete milestone");
     } finally {
       setBusy(false);
     }
@@ -159,6 +223,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
     try {
       const updated = await api.updateGroupTask(taskId, { status });
       setTasks((items) => items.map((task) => task.id === taskId ? updated : task));
+      if (selectedId) setMilestones(await api.groupMilestones(selectedId));
     } catch (error) {
       setTasks(previousTasks);
       onError(error instanceof Error ? error.message : "Unable to move group task");
@@ -292,6 +357,45 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                 </section>
               )}
 
+              <section className="group-milestones">
+                <div className="section-heading">
+                  <h2>Milestones</h2>
+                  <span>{milestones.filter((milestone) => milestone.is_complete).length} / {milestones.length} reached</span>
+                </div>
+                {selected.role === "leader" && (
+                  <form className="milestone-form" onSubmit={submitMilestone}>
+                    <input placeholder="Milestone title" value={milestoneTitle} onChange={(event) => setMilestoneTitle(event.target.value)} required />
+                    <input placeholder="Outcome or definition of done" value={milestoneDescription} onChange={(event) => setMilestoneDescription(event.target.value)} />
+                    <input aria-label="Milestone target date" type="date" value={milestoneDate} onChange={(event) => setMilestoneDate(event.target.value)} />
+                    <button disabled={busy}>{editingMilestoneId ? <Save size={15} /> : <Plus size={15} />}{editingMilestoneId ? "Save" : "Add"}</button>
+                    {editingMilestoneId && <button className="milestone-cancel" title="Cancel editing" type="button" onClick={() => {
+                      setEditingMilestoneId(null);
+                      setMilestoneTitle("");
+                      setMilestoneDescription("");
+                      setMilestoneDate("");
+                    }}><X size={15} /></button>}
+                  </form>
+                )}
+                <div className="milestone-list">
+                  {milestones.map((milestone) => (
+                    <article className={milestone.is_complete ? "complete" : ""} key={milestone.id}>
+                      <span className="milestone-icon">{milestone.is_complete ? <CheckCircle2 size={18} /> : <Flag size={18} />}</span>
+                      <div className="milestone-copy">
+                        <header><strong>{milestone.title}</strong>{milestone.target_date && <time>{new Date(milestone.target_date).toLocaleDateString()}</time>}</header>
+                        {milestone.description && <p>{milestone.description}</p>}
+                        <div className="milestone-progress"><i style={{ width: `${milestone.progress_percent}%` }} /></div>
+                        <small>{milestone.completed_task_count} of {milestone.task_count} linked tasks complete</small>
+                      </div>
+                      {milestone.can_manage && <div className="milestone-actions">
+                        <button title="Edit milestone" onClick={() => editMilestone(milestone)}><Pencil size={14} /></button>
+                        <button title="Delete milestone" onClick={() => removeMilestone(milestone.id)}><Trash2 size={14} /></button>
+                      </div>}
+                    </article>
+                  ))}
+                  {milestones.length === 0 && <div className="group-task-empty"><Flag size={18} /><span>No milestones</span></div>}
+                </div>
+              </section>
+
               <section className="group-work">
                 <div className="section-heading">
                   <h2>Shared tasks</h2>
@@ -323,6 +427,13 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                       <label>Due date</label>
                       <input type="date" value={taskDeadline} onChange={(event) => setTaskDeadline(event.target.value)} />
                     </div>
+                    <div>
+                      <label>Milestone</label>
+                      <select value={taskMilestone} onChange={(event) => setTaskMilestone(event.target.value)}>
+                        <option value="">No milestone</option>
+                        {milestones.map((milestone) => <option value={milestone.id} key={milestone.id}>{milestone.title}</option>)}
+                      </select>
+                    </div>
                     <div className="group-task-description">
                       <label>Details</label>
                       <input placeholder="Optional context or acceptance criteria" value={taskDescription} onChange={(event) => setTaskDescription(event.target.value)} />
@@ -344,8 +455,10 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                         key={status}
                         label={label}
                         members={selected.members}
+                        milestones={milestones}
                         onAssigneeChange={(taskId, assignedToId) => changeTask(taskId, { assigned_to_id: assignedToId })}
                         onDelete={removeTask}
+                        onMilestoneChange={(taskId, milestoneId) => changeTask(taskId, { milestone_id: milestoneId || null })}
                         onStatusChange={(taskId, nextStatus) => changeTask(taskId, { status: nextStatus })}
                         status={status}
                         tasks={tasks.filter((task) => task.status === status)}
@@ -383,8 +496,10 @@ type GroupTaskColumnProps = {
   icon: typeof Circle;
   label: string;
   members: ProductivityGroup["members"];
+  milestones: GroupMilestone[];
   onAssigneeChange: (taskId: string, assignedToId: string) => void;
   onDelete: (taskId: string) => void;
+  onMilestoneChange: (taskId: string, milestoneId: string) => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   status: TaskStatus;
   tasks: GroupTask[];
@@ -394,8 +509,10 @@ function GroupTaskColumn({
   icon: Icon,
   label,
   members,
+  milestones,
   onAssigneeChange,
   onDelete,
+  onMilestoneChange,
   onStatusChange,
   status,
   tasks
@@ -410,8 +527,10 @@ function GroupTaskColumn({
           <DraggableGroupTask
             key={task.id}
             members={members}
+            milestones={milestones}
             onAssigneeChange={onAssigneeChange}
             onDelete={onDelete}
+            onMilestoneChange={onMilestoneChange}
             onStatusChange={onStatusChange}
             task={task}
           />
@@ -424,14 +543,18 @@ function GroupTaskColumn({
 
 function DraggableGroupTask({
   members,
+  milestones,
   onAssigneeChange,
   onDelete,
+  onMilestoneChange,
   onStatusChange,
   task
 }: {
   members: ProductivityGroup["members"];
+  milestones: GroupMilestone[];
   onAssigneeChange: (taskId: string, assignedToId: string) => void;
   onDelete: (taskId: string) => void;
+  onMilestoneChange: (taskId: string, milestoneId: string) => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   task: GroupTask;
 }) {
@@ -464,10 +587,17 @@ function DraggableGroupTask({
         {task.deadline && <span><CalendarDays size={12} />{new Date(task.deadline).toLocaleDateString()}</span>}
       </div>
       {task.can_manage && (
-        <select aria-label={`Assignee for ${task.title}`} value={task.assigned_to_id} onChange={(event) => onAssigneeChange(task.id, event.target.value)}>
-          {members.map((member) => <option value={member.user_id} key={member.user_id}>{member.display_name || member.email.split("@")[0]}</option>)}
-        </select>
+        <div className="group-task-admin-fields">
+          <select aria-label={`Assignee for ${task.title}`} value={task.assigned_to_id} onChange={(event) => onAssigneeChange(task.id, event.target.value)}>
+            {members.map((member) => <option value={member.user_id} key={member.user_id}>{member.display_name || member.email.split("@")[0]}</option>)}
+          </select>
+          <select aria-label={`Milestone for ${task.title}`} value={task.milestone_id ?? ""} onChange={(event) => onMilestoneChange(task.id, event.target.value)}>
+            <option value="">No milestone</option>
+            {milestones.map((milestone) => <option value={milestone.id} key={milestone.id}>{milestone.title}</option>)}
+          </select>
+        </div>
       )}
+      {!task.can_manage && task.milestone_title && <span className="task-milestone"><Flag size={11} />{task.milestone_title}</span>}
       <footer>
         {task.can_update_status ? (
           <select aria-label={`Status for ${task.title}`} value={task.status} onChange={(event) => onStatusChange(task.id, event.target.value as TaskStatus)}>

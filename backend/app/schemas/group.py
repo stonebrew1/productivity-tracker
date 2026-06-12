@@ -55,6 +55,7 @@ class GroupTaskCreate(BaseModel):
     priority: TaskPriority = TaskPriority.MEDIUM
     deadline: datetime | None = None
     assigned_to_id: UUID
+    milestone_id: UUID | None = None
 
 
 class GroupTaskUpdate(BaseModel):
@@ -64,6 +65,7 @@ class GroupTaskUpdate(BaseModel):
     status: TaskStatus | None = None
     deadline: datetime | None = None
     assigned_to_id: UUID | None = None
+    milestone_id: UUID | None = None
 
 
 class GroupTaskRead(BaseModel):
@@ -79,5 +81,33 @@ class GroupTaskRead(BaseModel):
     assigned_to_id: UUID
     assignee_name: str
     created_by_id: UUID
+    milestone_id: UUID | None
+    milestone_title: str | None
     can_manage: bool
     can_update_status: bool
+
+
+class GroupMilestoneCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    description: str | None = Field(default=None, max_length=1000)
+    target_date: datetime | None = None
+
+
+class GroupMilestoneUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    description: str | None = Field(default=None, max_length=1000)
+    target_date: datetime | None = None
+
+
+class GroupMilestoneRead(BaseModel):
+    id: UUID
+    group_id: UUID
+    title: str
+    description: str | None
+    target_date: datetime | None
+    created_at: datetime
+    task_count: int
+    completed_task_count: int
+    progress_percent: int
+    is_complete: bool
+    can_manage: bool

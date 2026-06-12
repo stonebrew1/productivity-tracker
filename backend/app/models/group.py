@@ -27,6 +27,7 @@ class ProductivityGroup(Base):
     members = relationship("GroupMember", back_populates="group", cascade="all, delete-orphan")
     invitations = relationship("GroupInvitation", back_populates="group", cascade="all, delete-orphan")
     tasks = relationship("GroupTask", back_populates="group", cascade="all, delete-orphan")
+    milestones = relationship("GroupMilestone", back_populates="group", cascade="all, delete-orphan")
 
 
 class GroupMember(Base):
@@ -98,7 +99,29 @@ class GroupTask(Base):
     created_by_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
+    milestone_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("group_milestones.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     group = relationship("ProductivityGroup", back_populates="tasks")
     assigned_to = relationship("User", foreign_keys=[assigned_to_id])
     created_by = relationship("User", foreign_keys=[created_by_id])
+    milestone = relationship("GroupMilestone", back_populates="tasks")
+
+
+class GroupMilestone(Base):
+    __tablename__ = "group_milestones"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    title: Mapped[str] = mapped_column(String(160))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    target_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    group_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("productivity_groups.id", ondelete="CASCADE"), index=True
+    )
+
+    group = relationship("ProductivityGroup", back_populates="milestones")
+    tasks = relationship("GroupTask", back_populates="milestone")

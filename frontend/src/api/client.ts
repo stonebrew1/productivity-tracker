@@ -8,6 +8,7 @@ import type {
   FeedPost,
   GamificationDashboard,
   GroupInvitation,
+  GroupMilestone,
   GroupTask,
   LeaderboardEntry,
   Person,
@@ -144,17 +145,32 @@ export const api = {
     priority: "low" | "medium" | "high";
     deadline?: string | null;
     assigned_to_id: string;
+    milestone_id?: string | null;
   }) => request<GroupTask>(`/groups/${groupId}/tasks`, {
     method: "POST",
     body: JSON.stringify(payload)
   }),
-  updateGroupTask: (taskId: string, payload: Partial<Pick<GroupTask, "title" | "description" | "priority" | "status" | "deadline" | "assigned_to_id">>) =>
+  updateGroupTask: (taskId: string, payload: Partial<Pick<GroupTask, "title" | "description" | "priority" | "status" | "deadline" | "assigned_to_id" | "milestone_id">>) =>
     request<GroupTask>(`/groups/tasks/${taskId}`, {
       method: "PUT",
       body: JSON.stringify(payload)
     }),
   deleteGroupTask: (taskId: string) =>
     request<void>(`/groups/tasks/${taskId}`, { method: "DELETE" }),
+  groupMilestones: (groupId: string) =>
+    request<GroupMilestone[]>(`/groups/${groupId}/milestones`),
+  createGroupMilestone: (groupId: string, payload: { title: string; description?: string | null; target_date?: string | null }) =>
+    request<GroupMilestone>(`/groups/${groupId}/milestones`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+  updateGroupMilestone: (milestoneId: string, payload: { title?: string; description?: string | null; target_date?: string | null }) =>
+    request<GroupMilestone>(`/groups/milestones/${milestoneId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }),
+  deleteGroupMilestone: (milestoneId: string) =>
+    request<void>(`/groups/milestones/${milestoneId}`, { method: "DELETE" }),
   analytics: (dateFrom: string, dateTo: string, interval: AnalyticsInterval) => {
     const params = new URLSearchParams({
       date_from: dateFrom,

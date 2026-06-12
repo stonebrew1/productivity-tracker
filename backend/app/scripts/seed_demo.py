@@ -8,7 +8,7 @@ from app.core.database import AsyncSessionLocal, create_database_schema
 from app.core.security import hash_password
 from app.models.achievement import Achievement
 from app.models.category import Category
-from app.models.group import GroupInvitation, GroupMember, GroupTask, ProductivityGroup
+from app.models.group import GroupInvitation, GroupMember, GroupMilestone, GroupTask, ProductivityGroup
 from app.models.social import (
     ActivityPost,
     AccountabilityCommitment,
@@ -126,6 +126,9 @@ async def seed_demo() -> None:
         )
         if seeded_group_ids:
             await db.execute(delete(GroupTask).where(GroupTask.group_id.in_(seeded_group_ids)))
+            await db.execute(
+                delete(GroupMilestone).where(GroupMilestone.group_id.in_(seeded_group_ids))
+            )
             await db.execute(
                 delete(GroupInvitation).where(GroupInvitation.group_id.in_(seeded_group_ids))
             )
@@ -568,6 +571,29 @@ async def seed_demo() -> None:
         )
         db.add(demo_group)
         await db.flush()
+        scope_milestone = GroupMilestone(
+            group_id=demo_group.id,
+            title="Scope approved",
+            description="Research question, project boundaries, and evaluation criteria are agreed.",
+            target_date=now - timedelta(days=5),
+            created_at=now - timedelta(days=12),
+        )
+        prototype_milestone = GroupMilestone(
+            group_id=demo_group.id,
+            title="Prototype validation ready",
+            description="Architecture and usability materials are ready for the validation session.",
+            target_date=now + timedelta(days=5),
+            created_at=now - timedelta(days=6),
+        )
+        defense_milestone = GroupMilestone(
+            group_id=demo_group.id,
+            title="Defense preparation complete",
+            description="Questions, slides, and final demonstration are rehearsed.",
+            target_date=now + timedelta(days=14),
+            created_at=now - timedelta(days=2),
+        )
+        db.add_all([scope_milestone, prototype_milestone, defense_milestone])
+        await db.flush()
         db.add_all(
             [
                 GroupMember(
@@ -605,6 +631,7 @@ async def seed_demo() -> None:
                     completed_at=now - timedelta(days=6),
                     assigned_to_id=user.id,
                     created_by_id=user.id,
+                    milestone_id=scope_milestone.id,
                     created_at=now - timedelta(days=11),
                 ),
                 GroupTask(
@@ -616,6 +643,7 @@ async def seed_demo() -> None:
                     deadline=now + timedelta(days=2),
                     assigned_to_id=peers[0].id,
                     created_by_id=user.id,
+                    milestone_id=prototype_milestone.id,
                     created_at=now - timedelta(days=4),
                 ),
                 GroupTask(
@@ -623,10 +651,12 @@ async def seed_demo() -> None:
                     title="Review architecture diagram",
                     description="Check service boundaries and database relationships.",
                     priority=TaskPriority.MEDIUM,
-                    status=TaskStatus.TODO,
+                    status=TaskStatus.DONE,
                     deadline=now + timedelta(days=4),
+                    completed_at=now - timedelta(hours=14),
                     assigned_to_id=user.id,
                     created_by_id=user.id,
+                    milestone_id=prototype_milestone.id,
                     created_at=now - timedelta(days=2),
                 ),
                 GroupTask(
@@ -638,6 +668,7 @@ async def seed_demo() -> None:
                     deadline=now + timedelta(days=7),
                     assigned_to_id=peers[0].id,
                     created_by_id=user.id,
+                    milestone_id=defense_milestone.id,
                     created_at=now - timedelta(days=1),
                 ),
             ]
@@ -648,7 +679,7 @@ async def seed_demo() -> None:
         f"Seeded {DEMO_EMAIL}: {len(TASK_BLUEPRINTS)} completed tasks, "
         f"{len(OPEN_TASKS)} active tasks, 3 deleted-task histories, gamification progress, "
         f"{len(SOCIAL_USERS)} social demo users, 2 collaborative challenges, "
-        "1 accepted accountability commitment, and 1 group workspace with 4 shared tasks."
+        "1 accepted accountability commitment, and 1 group workspace with 3 milestones and 4 shared tasks."
     )
 
 

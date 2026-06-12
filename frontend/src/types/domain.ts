@@ -240,8 +240,24 @@ export type GroupTask = {
   assigned_to_id: string;
   assignee_name: string;
   created_by_id: string;
+  milestone_id: string | null;
+  milestone_title: string | null;
   can_manage: boolean;
   can_update_status: boolean;
+};
+
+export type GroupMilestone = {
+  id: string;
+  group_id: string;
+  title: string;
+  description: string | null;
+  target_date: string | null;
+  created_at: string;
+  task_count: number;
+  completed_task_count: number;
+  progress_percent: number;
+  is_complete: boolean;
+  can_manage: boolean;
 };
 
 export type AnalyticsInterval = "day" | "week" | "month";
