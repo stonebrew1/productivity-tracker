@@ -621,13 +621,25 @@ p { color: var(--muted); line-height: 1.6; }
   .group-list-panel { overflow-x: auto; }
   .group-list-panel > .section-heading { position: sticky; left: 0; }
   .group-list-panel > button { display: inline-grid; width: min(230px, 75vw); margin-right: 5px; vertical-align: top; }
-  .leader-tool-grid { grid-template-columns: 1fr; }
-  .milestone-form { grid-template-columns: 1fr 1.3fr; }
-  .milestone-form button { grid-column: auto; }
-  .group-task-form { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .group-task-form .group-task-description { grid-column: 1 / -1; }
-  .group-task-form > button { grid-column: 1 / -1; }
-  .group-task-board { overflow-x: auto; grid-template-columns: repeat(3,minmax(220px,1fr)); padding-bottom: 5px; }
+  .group-create-form, .group-action-divider, .leader-tools, .milestone-form, .milestone-actions, .group-task-form, .group-task-drag-handle, .group-task-admin-fields, .group-task-card footer button { display: none; }
+  .group-actions-panel { padding: 12px; }
+  .group-join-form { grid-template-columns: minmax(0,1fr) auto; align-items: end; }
+  .group-join-form h2 { grid-column: 1 / -1; }
+  .group-join-form button { min-width: 105px; }
+  .group-milestones, .group-work, .group-roster { padding: 13px; }
+  .milestone-list article { grid-template-columns: 34px minmax(0,1fr); padding: 10px; }
+  .milestone-icon { width: 34px; height: 34px; }
+  .milestone-copy p { display: none; }
+  .group-task-board { grid-template-columns: 1fr; overflow: visible; }
+  .group-task-column { padding: 9px; }
+  .group-task-column > div { gap: 8px; }
+  .group-task-card { padding: 12px; }
+  .group-task-card-title { grid-template-columns: 7px minmax(0,1fr); }
+  .group-task-card p { margin-left: 14px; }
+  .group-task-card footer { grid-template-columns: 1fr; }
+  .group-task-card footer select { min-height: 36px; }
+  .task-milestone { margin-top: 2px; }
+  .group-roster article div span { display: none; }
 }
 
 @media (max-width: 520px) {
@@ -663,17 +675,12 @@ p { color: var(--muted); line-height: 1.6; }
   .group-icon.large { width: 42px; height: 42px; flex-basis: 42px; }
   .group-hero-stat { grid-column: 2; display: flex; align-items: baseline; gap: 5px; border-left: 0; padding-left: 0; text-align: left; }
   .group-hero-stat strong { font-size: .9rem; }
-  .direct-invite { grid-template-columns: 1fr; }
-  .direct-invite > span { grid-column: auto; }
   .group-roster article { grid-template-columns: 34px minmax(0,1fr); }
   .group-roster article .avatar { width: 34px; height: 34px; }
   .member-role { grid-column: 2; justify-self: start; }
   .group-invitations article { grid-template-columns: 34px minmax(0,1fr); }
   .group-invitations article > div:last-child { grid-column: 2; }
-  .milestone-form { grid-template-columns: 1fr; }
-  .milestone-list article { grid-template-columns: 34px minmax(0,1fr); }
-  .milestone-actions { grid-column: 2; }
-  .group-task-admin-fields { grid-template-columns: 1fr; }
-  .group-task-form { grid-template-columns: 1fr; }
-  .group-task-form .group-task-description, .group-task-form > button { grid-column: auto; }
+  .group-join-form { grid-template-columns: 1fr; }
+  .group-join-form h2 { grid-column: auto; }
+  .group-join-form button { width: 100%; }
 }

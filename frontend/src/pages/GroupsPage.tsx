@@ -304,14 +304,14 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
           </section>
 
           <section className="group-actions-panel">
-            <form onSubmit={submitCreate}>
+            <form className="group-create-form" onSubmit={submitCreate}>
               <h2>Create group</h2>
               <input placeholder="Group name" value={name} onChange={(event) => setName(event.target.value)} required />
               <textarea placeholder="Purpose or shared goal" value={description} onChange={(event) => setDescription(event.target.value)} />
               <button disabled={busy}><Plus size={15} />Create</button>
             </form>
             <div className="group-action-divider"><span>or</span></div>
-            <form onSubmit={submitJoin}>
+            <form className="group-join-form" onSubmit={submitJoin}>
               <h2>Join with code</h2>
               <input className="code-input" placeholder="ABCD2345" maxLength={12} value={joinCode} onChange={(event) => setJoinCode(event.target.value.toUpperCase())} required />
               <button disabled={busy}><KeyRound size={15} />Join group</button>
@@ -597,7 +597,7 @@ function DraggableGroupTask({
           </select>
         </div>
       )}
-      {!task.can_manage && task.milestone_title && <span className="task-milestone"><Flag size={11} />{task.milestone_title}</span>}
+      {task.milestone_title && <span className="task-milestone"><Flag size={11} />{task.milestone_title}</span>}
       <footer>
         {task.can_update_status ? (
           <select aria-label={`Status for ${task.title}`} value={task.status} onChange={(event) => onStatusChange(task.id, event.target.value as TaskStatus)}>
