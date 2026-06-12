@@ -349,6 +349,76 @@ p { color: var(--muted); line-height: 1.6; }
 .social-empty { display: grid; justify-items: center; border: 1px dashed var(--border); border-radius: 8px; padding: 35px; text-align: center; }
 .social-empty p { margin: 5px 0 0; font-size: .78rem; }
 
+/* Groups */
+.group-invitations { border: 1px solid rgba(59,130,246,.3); border-radius: 8px; background: rgba(59,130,246,.07); padding: 16px; margin-bottom: 18px; }
+.group-invitations article { display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: 12px; border-top: 1px solid rgba(59,130,246,.18); padding: 11px 0; }
+.group-invitations article:first-of-type { border-top: 0; }
+.group-invitations article > div:nth-child(2) { min-width: 0; }
+.group-invitations article strong { font-size: .78rem; }
+.group-invitations article p { margin: 3px 0 0; font-size: .68rem; }
+.group-invitations article > div:last-child { display: flex; gap: 6px; }
+.group-invitations article button, .invite-code-box button {
+  display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--border);
+  border-radius: 7px; background: var(--surface-1); color: var(--muted);
+}
+.group-invitations article button:first-child:hover { color: var(--emerald); }
+.group-invitations article button:last-child:hover { color: #f87171; }
+.groups-layout { display: grid; grid-template-columns: minmax(230px, .72fr) minmax(0, 1.65fr); align-items: start; gap: 18px; }
+.groups-sidebar { display: grid; gap: 14px; }
+.group-list-panel, .group-actions-panel, .group-hero, .leader-tools, .group-roster {
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1);
+}
+.group-list-panel, .group-actions-panel, .leader-tools, .group-roster { padding: 16px; }
+.group-list-panel > button {
+  display: grid; width: 100%; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 9px;
+  border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--text); padding: 9px; text-align: left;
+}
+.group-list-panel > button:hover { background: var(--surface-2); }
+.group-list-panel > button.active { border-color: rgba(124,58,237,.32); background: var(--violet-dim); }
+.group-list-panel > button > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.group-list-panel > button strong { overflow: hidden; font-size: .73rem; text-overflow: ellipsis; white-space: nowrap; }
+.group-list-panel > button small { color: var(--muted); font-size: .61rem; }
+.group-list-panel > button > svg { color: var(--amber); }
+.group-icon { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 8px; background: rgba(59,130,246,.12); color: #60a5fa; }
+.group-icon.large { width: 48px; height: 48px; flex-basis: 48px; background: rgba(124,58,237,.18); color: #a78bfa; }
+.group-actions-panel { display: grid; gap: 12px; }
+.group-actions-panel form { display: grid; gap: 8px; }
+.group-actions-panel h2 { margin: 0 0 3px; font-size: .78rem; }
+.group-actions-panel input, .group-actions-panel textarea, .direct-invite select { min-height: 38px; font-size: .7rem; }
+.group-actions-panel textarea { min-height: 68px; }
+.group-actions-panel button, .direct-invite button { min-height: 36px; font-size: .68rem; }
+.group-action-divider { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: .6rem; }
+.group-action-divider::before, .group-action-divider::after { height: 1px; flex: 1; background: var(--border); content: ""; }
+.code-input { text-transform: uppercase; letter-spacing: .12rem; }
+.group-detail { display: grid; gap: 14px; min-width: 0; }
+.group-detail > .empty-state { min-height: 340px; border: 1px dashed var(--border); border-radius: 8px; background: var(--surface-1); padding: 30px; }
+.group-hero { display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 15px; overflow: hidden; padding: 20px; }
+.group-hero > div:nth-child(2) { min-width: 0; }
+.group-hero > div:nth-child(2) > span { color: #a78bfa; font-size: .64rem; font-weight: 700; text-transform: uppercase; }
+.group-hero h2 { overflow-wrap: anywhere; margin: 4px 0 5px; font-size: 1.15rem; }
+.group-hero p { margin: 0; font-size: .72rem; }
+.group-hero-stat { min-width: 70px; border-left: 1px solid var(--border); padding-left: 18px; text-align: center; }
+.group-hero-stat strong { display: block; font-size: 1.35rem; }
+.group-hero-stat span { color: var(--muted); font-size: .62rem; }
+.leader-tools .section-heading span { display: flex; align-items: center; gap: 4px; }
+.leader-tool-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.25fr); gap: 10px; }
+.invite-code-box, .direct-invite { border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); padding: 12px; }
+.invite-code-box { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 5px 10px; }
+.invite-code-box > span, .direct-invite > span { color: var(--muted); font-size: .61rem; }
+.invite-code-box > strong { font-size: .95rem; letter-spacing: .12rem; }
+.invite-code-box > div { grid-column: 2; grid-row: 1 / 3; display: flex; gap: 5px; }
+.invite-code-box button:hover { color: #a78bfa; }
+.direct-invite { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; }
+.direct-invite > span { grid-column: 1 / -1; }
+.direct-invite button { padding-inline: 12px; }
+.group-roster article { display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: 11px; border-top: 1px solid var(--border); padding: 11px 2px; }
+.group-roster article .avatar { width: 38px; height: 38px; font-size: .72rem; }
+.group-roster article > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.group-roster article strong { overflow: hidden; font-size: .74rem; text-overflow: ellipsis; white-space: nowrap; }
+.group-roster article div span { color: var(--muted); font-size: .61rem; }
+.member-role { display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; background: var(--surface-2); color: var(--muted); padding: 5px 8px; font-size: .59rem; text-transform: capitalize; }
+.member-role.leader { background: rgba(245,158,11,.1); color: var(--amber); }
+
 /* Progression */
 .game-progress { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 24px; overflow: hidden; border: 1px solid rgba(124,58,237,.35); border-radius: 8px; background: radial-gradient(circle at 85% 0, rgba(124,58,237,.25), transparent 40%), var(--surface-1); padding: 25px; }
 .level-mark { display: grid; width: 88px; height: 88px; place-items: center; align-content: center; border: 1px solid rgba(167,139,250,.35); border-radius: 50%; background: rgba(124,58,237,.14); }
@@ -422,11 +492,12 @@ p { color: var(--muted); line-height: 1.6; }
   .workspace { margin-left: 0; padding-bottom: 68px; }
   .mobile-header { position: sticky; top: 0; z-index: 15; display: flex; height: 62px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: rgba(11,11,24,.94); padding: 0 20px; backdrop-filter: blur(16px); }
   .mobile-header .brand { padding: 0; }
-  .mobile-nav { position: fixed; z-index: 30; inset: auto 0 0; display: grid; height: 66px; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--border); background: rgba(11,11,24,.97); padding-bottom: env(safe-area-inset-bottom); backdrop-filter: blur(16px); }
+  .mobile-nav { position: fixed; z-index: 30; inset: auto 0 0; display: grid; height: 66px; grid-template-columns: repeat(6, 1fr); border-top: 1px solid var(--border); background: rgba(11,11,24,.97); padding-bottom: env(safe-area-inset-bottom); backdrop-filter: blur(16px); }
   .mobile-nav button { display: grid; min-width: 0; place-items: center; align-content: center; gap: 4px; border: 0; background: transparent; color: var(--muted); padding: 6px 2px; font-size: .59rem; }
   .mobile-nav button.active { color: #a78bfa; }
   .content-inner { padding: 28px 22px 50px; }
-  .today-layout, .social-layout { grid-template-columns: 1fr; }
+  .today-layout, .social-layout, .groups-layout { grid-template-columns: 1fr; }
+  .groups-sidebar { grid-template-columns: minmax(210px,.8fr) minmax(260px,1.2fr); }
   .today-aside { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .quick-add { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .quick-add-title { grid-column: 1 / -1; }
@@ -450,6 +521,11 @@ p { color: var(--muted); line-height: 1.6; }
   .game-progress { grid-template-columns: auto 1fr; }.game-streak { grid-column: 1 / -1; grid-auto-flow: column; justify-content: start; gap: 8px; }
   .quest-grid, .badge-catalog, .challenge-grid, .two-column { grid-template-columns: 1fr; }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .groups-sidebar { grid-template-columns: 1fr; }
+  .group-list-panel { overflow-x: auto; }
+  .group-list-panel > .section-heading { position: sticky; left: 0; }
+  .group-list-panel > button { display: inline-grid; width: min(230px, 75vw); margin-right: 5px; vertical-align: top; }
+  .leader-tool-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 520px) {
@@ -480,4 +556,16 @@ p { color: var(--muted); line-height: 1.6; }
   .page-tabs button { flex: 1; padding-inline: 5px; }
   .chart-legend { justify-content: flex-start; margin: 0 0 14px; }
   .bar-row { grid-template-columns: 78px 1fr 24px; }
+  .mobile-nav button { font-size: .52rem; }
+  .group-hero { grid-template-columns: 42px minmax(0,1fr); padding: 16px; }
+  .group-icon.large { width: 42px; height: 42px; flex-basis: 42px; }
+  .group-hero-stat { grid-column: 2; display: flex; align-items: baseline; gap: 5px; border-left: 0; padding-left: 0; text-align: left; }
+  .group-hero-stat strong { font-size: .9rem; }
+  .direct-invite { grid-template-columns: 1fr; }
+  .direct-invite > span { grid-column: auto; }
+  .group-roster article { grid-template-columns: 34px minmax(0,1fr); }
+  .group-roster article .avatar { width: 34px; height: 34px; }
+  .member-role { grid-column: 2; justify-self: start; }
+  .group-invitations article { grid-template-columns: 34px minmax(0,1fr); }
+  .group-invitations article > div:last-child { grid-column: 2; }
 }

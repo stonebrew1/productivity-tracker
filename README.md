@@ -50,6 +50,11 @@ Then open:
 - `POST /api/social/commitments/{commitment_id}/accept`
 - `POST /api/social/commitments/{commitment_id}/decline`
 - `POST/DELETE /api/social/posts/{post_id}/reaction`
+- `GET/POST /api/groups`
+- `POST /api/groups/join`
+- `GET /api/groups/invitations`
+- `POST /api/groups/{group_id}/invitations`
+- `POST /api/groups/{group_id}/invite-code`
 - `GET /api/gamification`
 
 ## Notes
@@ -71,6 +76,8 @@ Phase 4 adds inline comments and an in-app notification inbox for follows, react
 Phase 5 introduces collaborative community challenges. Users can join time-boxed challenges where only public tasks completed after joining contribute to the shared target. When the team reaches its goal, every participant receives the challenge XP reward exactly once, and non-finishing participants receive a completion notification. Completed challenges cannot be left.
 
 Phase 6 adds one-to-one accountability commitments. Owners can invite a followed user to support an unfinished public task. The invited partner accepts or declines in Social; after acceptance, both users see the commitment and each receives a one-time 15 XP bonus when the owner completes the task. Either participant may cancel before completion, while completed commitments remain immutable.
+
+Group Phase 1 adds persistent group workspaces with leader and member roles. A leader can create a group, invite followed connections, copy or rotate a join code, and inspect the participant roster. Users can accept or decline direct invitations or join immediately with a code; join codes are visible only to the leader.
 
 The backend currently creates new tables automatically on startup. Moving all schema changes to Alembic migrations is the next infrastructure milestone.
 
@@ -106,3 +113,5 @@ For the Phase 4 demo, the seeded account begins with one of two required comment
 For the Phase 5 demo, the seeded **Public momentum sprint** begins at 12/13 with Alex, Maya, and Leo participating. Create and complete one public task to finish the team target. All three participants receive 40 XP once, the Social challenge card becomes complete, and the result appears under Team challenges in Progression. A second 6/8 challenge remains available to join.
 
 For the Phase 6 demo, **Prepare project defense slides** is a public in-progress task with Maya already accepted as Alex's accountability partner. Complete it from Tasks or Today: Alex and Maya each receive 15 XP, Maya receives a completion notification, and the commitment moves from accepted to completed.
+
+For the group demo, Alex leads **Bachelor Project Lab** with Maya already participating. The leader can copy the seeded `MOMENTUM` code, rotate it, or invite followed connections. Sign in as `leo@example.com` with the same demo password to accept the pending invitation, or reset the seed and join using the code.

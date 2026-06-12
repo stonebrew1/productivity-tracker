@@ -174,7 +174,7 @@ export type PostComment = {
 
 export type SocialNotification = {
   id: string;
-  kind: "follow" | "reaction" | "comment" | "challenge" | "accountability";
+  kind: "follow" | "reaction" | "comment" | "challenge" | "accountability" | "group";
   message: string;
   is_read: boolean;
   created_at: string;
@@ -195,6 +195,36 @@ export type AccountabilityCommitment = {
   owner: FeedPost["author"];
   partner: FeedPost["author"];
   role: "owner" | "partner";
+};
+
+export type GroupMember = {
+  user_id: string;
+  display_name: string | null;
+  email: string;
+  avatar_url: string | null;
+  level: number;
+  role: "leader" | "member";
+  joined_at: string;
+};
+
+export type ProductivityGroup = {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+  role: "leader" | "member";
+  invite_code: string | null;
+  member_count: number;
+  members: GroupMember[];
+};
+
+export type GroupInvitation = {
+  id: string;
+  group_id: string;
+  group_name: string;
+  inviter_name: string;
+  status: "pending";
+  created_at: string;
 };
 
 export type AnalyticsInterval = "day" | "week" | "month";

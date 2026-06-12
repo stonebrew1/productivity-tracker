@@ -7,10 +7,12 @@ import type {
   Challenge,
   FeedPost,
   GamificationDashboard,
+  GroupInvitation,
   LeaderboardEntry,
   Person,
   PostComment,
   Profile,
+  ProductivityGroup,
   SocialNotification,
   Stats,
   Task,
@@ -114,6 +116,26 @@ export const api = {
   declineCommitment: (id: string) =>
     request<AccountabilityCommitment>(`/social/commitments/${id}/decline`, { method: "POST" }),
   cancelCommitment: (id: string) => request<void>(`/social/commitments/${id}`, { method: "DELETE" }),
+  groups: () => request<ProductivityGroup[]>("/groups"),
+  createGroup: (payload: { name: string; description?: string | null }) =>
+    request<ProductivityGroup>("/groups", { method: "POST", body: JSON.stringify(payload) }),
+  joinGroup: (inviteCode: string) =>
+    request<ProductivityGroup>("/groups/join", {
+      method: "POST",
+      body: JSON.stringify({ invite_code: inviteCode })
+    }),
+  groupInvitations: () => request<GroupInvitation[]>("/groups/invitations"),
+  inviteGroupMember: (groupId: string, userId: string) =>
+    request<void>(`/groups/${groupId}/invitations`, {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId })
+    }),
+  acceptGroupInvitation: (id: string) =>
+    request<void>(`/groups/invitations/${id}/accept`, { method: "POST" }),
+  declineGroupInvitation: (id: string) =>
+    request<void>(`/groups/invitations/${id}/decline`, { method: "POST" }),
+  rotateGroupCode: (id: string) =>
+    request<ProductivityGroup>(`/groups/${id}/invite-code`, { method: "POST" }),
   analytics: (dateFrom: string, dateTo: string, interval: AnalyticsInterval) => {
     const params = new URLSearchParams({
       date_from: dateFrom,

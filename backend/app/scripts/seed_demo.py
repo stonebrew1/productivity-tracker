@@ -8,6 +8,7 @@ from app.core.database import AsyncSessionLocal, create_database_schema
 from app.core.security import hash_password
 from app.models.achievement import Achievement
 from app.models.category import Category
+from app.models.group import GroupInvitation, GroupMember, ProductivityGroup
 from app.models.social import (
     ActivityPost,
     AccountabilityCommitment,
@@ -118,6 +119,19 @@ async def seed_demo() -> None:
 
         seeded_users = [user, *peers]
         seeded_user_ids = [item.id for item in seeded_users]
+        seeded_group_ids = list(
+            await db.scalars(
+                select(ProductivityGroup.id).where(ProductivityGroup.leader_id.in_(seeded_user_ids))
+            )
+        )
+        if seeded_group_ids:
+            await db.execute(
+                delete(GroupInvitation).where(GroupInvitation.group_id.in_(seeded_group_ids))
+            )
+            await db.execute(delete(GroupMember).where(GroupMember.group_id.in_(seeded_group_ids)))
+            await db.execute(
+                delete(ProductivityGroup).where(ProductivityGroup.id.in_(seeded_group_ids))
+            )
         await db.execute(
             delete(AccountabilityCommitment).where(
                 or_(
@@ -544,13 +558,51 @@ async def seed_demo() -> None:
                 created_at=now - timedelta(hours=5),
             )
         )
+        demo_group = ProductivityGroup(
+            name="Bachelor Project Lab",
+            description="A shared workspace for planning, building, and preparing the project defense.",
+            invite_code="MOMENTUM",
+            leader_id=user.id,
+            created_at=now - timedelta(days=12),
+        )
+        db.add(demo_group)
+        await db.flush()
+        db.add_all(
+            [
+                GroupMember(
+                    group_id=demo_group.id,
+                    user_id=user.id,
+                    role="leader",
+                    joined_at=demo_group.created_at,
+                ),
+                GroupMember(
+                    group_id=demo_group.id,
+                    user_id=peers[0].id,
+                    role="member",
+                    joined_at=now - timedelta(days=9),
+                ),
+                GroupInvitation(
+                    group_id=demo_group.id,
+                    invited_user_id=peers[1].id,
+                    invited_by_id=user.id,
+                    created_at=now - timedelta(hours=8),
+                ),
+                Notification(
+                    kind="group",
+                    message=f"invited you to join {demo_group.name}",
+                    recipient_id=peers[1].id,
+                    actor_id=user.id,
+                    created_at=now - timedelta(hours=8),
+                ),
+            ]
+        )
         await db.commit()
 
     print(
         f"Seeded {DEMO_EMAIL}: {len(TASK_BLUEPRINTS)} completed tasks, "
         f"{len(OPEN_TASKS)} active tasks, 3 deleted-task histories, gamification progress, "
         f"{len(SOCIAL_USERS)} social demo users, 2 collaborative challenges, "
-        "and 1 accepted accountability commitment."
+        "1 accepted accountability commitment, and 1 group workspace."
     )
 
 
