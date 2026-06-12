@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class GamificationRead(BaseModel):
@@ -48,6 +48,7 @@ class FeedPostRead(BaseModel):
     author: FeedAuthor
     reactions_count: int
     reacted_by_me: bool
+    comments_count: int
 
 
 class LeaderboardEntryRead(BaseModel):
@@ -60,3 +61,25 @@ class LeaderboardEntryRead(BaseModel):
     current_streak: int
     weekly_xp: int
     is_current_user: bool
+
+
+class CommentCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=280)
+
+
+class CommentRead(BaseModel):
+    id: UUID
+    content: str
+    created_at: datetime
+    author: FeedAuthor
+    can_delete: bool
+
+
+class NotificationRead(BaseModel):
+    id: UUID
+    kind: str
+    message: str
+    is_read: bool
+    created_at: datetime
+    post_id: UUID | None
+    actor: FeedAuthor

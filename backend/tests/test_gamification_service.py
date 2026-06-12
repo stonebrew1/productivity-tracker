@@ -37,3 +37,10 @@ def test_social_encouragement_quest_is_part_of_catalog() -> None:
 
     assert quest["metric"] == "reactions"
     assert quest["target"] == 3
+
+
+def test_social_comment_quest_is_part_of_catalog() -> None:
+    quest = next(item for item in QUEST_CATALOG if item["code"] == "weekly_comment_2")
+
+    assert quest["metric"] == "comments"
+    assert quest["target"] == 2

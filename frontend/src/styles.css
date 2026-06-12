@@ -243,11 +243,35 @@ p { color: var(--muted); line-height: 1.6; }
 .feed-copy > div span, .feed-copy time { color: var(--muted); font-size: .67rem; }
 .feed-copy p { border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); color: #c7c7d5; padding: 12px; margin: 10px 0 7px; font-size: .8rem; }
 .feed-copy small { color: #a78bfa; font-weight: 700; }
-.reaction { align-self: end; display: flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--muted); }
+.feed-actions { align-self: end; display: flex; gap: 10px; }
+.reaction, .comment-toggle { display: flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--muted); padding: 3px; }
 .reaction.active { color: var(--pink); }
+.comment-toggle.active { color: #a78bfa; }
 .reaction:disabled { color: #3e3e55; }
+.post-comments { grid-column: 2 / -1; border-top: 1px solid var(--border); padding-top: 12px; }
+.comment-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) 28px; gap: 9px; padding: 8px 0; }
+.comment-row .avatar { width: 30px; height: 30px; font-size: .66rem; }
+.comment-row > div { min-width: 0; }
+.comment-row strong { display: block; font-size: .69rem; }
+.comment-row p { margin: 2px 0; color: #b9b9ca; font-size: .71rem; line-height: 1.45; overflow-wrap: anywhere; }
+.comment-row time { color: var(--muted); font-size: .58rem; }
+.comment-row > button { display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted); }
+.comment-row > button:hover { background: rgba(239,68,68,.1); color: #f87171; }
+.comment-form { display: grid; grid-template-columns: 1fr 36px; gap: 7px; margin-top: 8px; }
+.comment-form input { min-height: 36px; font-size: .72rem; }
+.comment-form button { width: 36px; min-height: 36px; padding: 0; }
 .social-aside { display: grid; align-content: start; gap: 14px; }
-.profile-editor, .people-section, .leaderboard, .active-friends { border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); padding: 16px; }
+.profile-editor, .people-section, .leaderboard, .active-friends, .notifications-panel { border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); padding: 16px; }
+.notifications-panel .section-heading h2 { display: flex; align-items: center; gap: 6px; }
+.notifications-panel .section-heading h2 b { display: grid; min-width: 18px; height: 18px; place-items: center; border-radius: 9px; background: var(--violet); color: white; font-size: .58rem; }
+.notifications-panel .section-heading button { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); }
+.notifications-panel .section-heading button:hover { color: var(--emerald); }
+.notification-row { display: grid; grid-template-columns: 30px 1fr; gap: 9px; border-top: 1px solid var(--border); padding: 10px 2px; opacity: .68; }
+.notification-row.unread { opacity: 1; }
+.notification-row .avatar { width: 30px; height: 30px; font-size: .65rem; }
+.notification-row p { margin: 0; color: var(--muted); font-size: .66rem; line-height: 1.45; }
+.notification-row p strong { color: var(--text); }
+.notification-row time { display: block; margin-top: 3px; color: #575771; font-size: .57rem; }
 .profile-editor { display: grid; gap: 11px; }
 .profile-editor label { display: grid; gap: 6px; color: var(--muted); font-size: .7rem; }
 .person-row { display: grid; grid-template-columns: 34px 1fr 34px; align-items: center; gap: 9px; padding: 9px 0; border-top: 1px solid var(--border); }
@@ -387,7 +411,7 @@ p { color: var(--muted); line-height: 1.6; }
   .check-filter { min-height: 38px; }
   .xp-chip { display: none; }
   .profile-strip { grid-template-columns: 44px 1fr; }.profile-strip > .avatar { width: 44px; height: 44px; }.streak-stat { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 6px; text-align: left; }
-  .feed-post { grid-template-columns: 34px 1fr; padding: 13px; }.feed-post > .avatar { width: 34px; height: 34px; }.reaction { grid-column: 2; justify-self: start; }
+  .feed-post { grid-template-columns: 34px 1fr; padding: 13px; }.feed-post > .avatar { width: 34px; height: 34px; }.feed-actions { grid-column: 2; justify-self: start; }.post-comments { grid-column: 1 / -1; }
   .social-quest { grid-template-columns: 34px 1fr; }.social-quest-progress { grid-column: 2; grid-template-columns: auto 1fr auto; align-items: center; text-align: left; }
   .game-progress { grid-template-columns: 1fr; gap: 18px; text-align: center; }.level-mark { margin: auto; }.game-progress-copy > div:first-child { flex-direction: column; gap: 4px; }.game-streak { grid-column: auto; justify-content: center; }
   .page-tabs button { flex: 1; padding-inline: 5px; }

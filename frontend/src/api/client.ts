@@ -7,7 +7,9 @@ import type {
   GamificationDashboard,
   LeaderboardEntry,
   Person,
+  PostComment,
   Profile,
+  SocialNotification,
   Stats,
   Task,
   TokenResponse,
@@ -85,8 +87,17 @@ export const api = {
   follow: (id: string) => request<void>(`/social/people/${id}/follow`, { method: "POST" }),
   unfollow: (id: string) => request<void>(`/social/people/${id}/follow`, { method: "DELETE" }),
   feed: () => request<FeedPost[]>("/social/feed"),
+  comments: (postId: string) => request<PostComment[]>(`/social/posts/${postId}/comments`),
+  createComment: (postId: string, content: string) =>
+    request<PostComment>(`/social/posts/${postId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content })
+    }),
+  deleteComment: (id: string) => request<void>(`/social/comments/${id}`, { method: "DELETE" }),
   react: (id: string) => request<void>(`/social/posts/${id}/reaction`, { method: "POST" }),
   unreact: (id: string) => request<void>(`/social/posts/${id}/reaction`, { method: "DELETE" }),
+  notifications: () => request<SocialNotification[]>("/social/notifications"),
+  markNotificationsRead: () => request<void>("/social/notifications/read", { method: "POST" }),
   analytics: (dateFrom: string, dateTo: string, interval: AnalyticsInterval) => {
     const params = new URLSearchParams({
       date_from: dateFrom,

@@ -8,10 +8,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models.social import ActivityPost, Follow, PostReaction, XpAward
+from app.models.social import ActivityPost, Follow, Notification, PostComment, PostReaction, XpAward
 from app.models.user import User
 from app.models.user_stats import UserStats
-from app.schemas.social import FeedAuthor, FeedPostRead, LeaderboardEntryRead, PersonRead, ProfileRead
+from app.schemas.social import (
+    CommentCreate,
+    CommentRead,
+    FeedAuthor,
+    FeedPostRead,
+    LeaderboardEntryRead,
+    NotificationRead,
+    PersonRead,
+    ProfileRead,
+)
 from app.schemas.user import ProfileUpdate
 from app.services.gamification_service import award_quest_rewards, gamification_snapshot, level_from_xp
 from app.services.stats_service import ensure_stats
@@ -139,6 +148,14 @@ async def follow_user(
     )
     if not existing:
         db.add(Follow(follower_id=current_user.id, followed_id=user_id))
+        db.add(
+            Notification(
+                kind="follow",
+                message="started following you",
+                recipient_id=user_id,
+                actor_id=current_user.id,
+            )
+        )
         await db.commit()
 
 
@@ -174,6 +191,7 @@ async def read_feed(
     ).all()
     post_ids = [post.id for post, _, _ in rows]
     reaction_counts: dict[UUID, int] = {}
+    comment_counts: dict[UUID, int] = {}
     reacted_ids: set[UUID] = set()
     if post_ids:
         reaction_counts = dict(
@@ -182,6 +200,15 @@ async def read_feed(
                     select(PostReaction.post_id, func.count())
                     .where(PostReaction.post_id.in_(post_ids))
                     .group_by(PostReaction.post_id)
+                )
+            ).all()
+        )
+        comment_counts = dict(
+            (
+                await db.execute(
+                    select(PostComment.post_id, func.count())
+                    .where(PostComment.post_id.in_(post_ids))
+                    .group_by(PostComment.post_id)
                 )
             ).all()
         )
@@ -207,6 +234,7 @@ async def read_feed(
             ),
             reactions_count=reaction_counts.get(post.id, 0),
             reacted_by_me=post.id in reacted_ids,
+            comments_count=comment_counts.get(post.id, 0),
         )
         for post, user, stats in rows
     ]
@@ -240,6 +268,15 @@ async def add_reaction(
     )
     if not existing:
         db.add(PostReaction(post_id=post_id, user_id=current_user.id))
+        db.add(
+            Notification(
+                kind="reaction",
+                message=f"encouraged your completion of {post.task_title}",
+                recipient_id=post.user_id,
+                actor_id=current_user.id,
+                post_id=post.id,
+            )
+        )
         await db.flush()
         await award_quest_rewards(current_user.id, db)
         await db.commit()
@@ -261,6 +298,136 @@ async def remove_reaction(
         await db.commit()
 
 
+@router.get("/posts/{post_id}/comments", response_model=list[CommentRead])
+async def read_comments(
+    post_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[CommentRead]:
+    post = await visible_post(post_id, current_user.id, db)
+    rows = (
+        await db.execute(
+            select(PostComment, User, UserStats)
+            .join(User, User.id == PostComment.user_id)
+            .outerjoin(UserStats, UserStats.user_id == User.id)
+            .where(PostComment.post_id == post.id)
+            .order_by(PostComment.created_at.asc())
+            .limit(100)
+        )
+    ).all()
+    return [
+        CommentRead(
+            id=comment.id,
+            content=comment.content,
+            created_at=comment.created_at,
+            author=feed_author(user, stats),
+            can_delete=comment.user_id == current_user.id,
+        )
+        for comment, user, stats in rows
+    ]
+
+
+@router.post("/posts/{post_id}/comments", response_model=CommentRead, status_code=201)
+async def create_comment(
+    post_id: UUID,
+    payload: CommentCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CommentRead:
+    post = await visible_post(post_id, current_user.id, db)
+    content = payload.content.strip()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Comment cannot be empty.")
+    comment = PostComment(
+        content=content,
+        post_id=post.id,
+        user_id=current_user.id,
+    )
+    db.add(comment)
+    if post.user_id != current_user.id:
+        db.add(
+            Notification(
+                kind="comment",
+                message=f"commented on your completion of {post.task_title}",
+                recipient_id=post.user_id,
+                actor_id=current_user.id,
+                post_id=post.id,
+            )
+        )
+    await db.flush()
+    await award_quest_rewards(current_user.id, db)
+    stats = await ensure_stats(current_user.id, db)
+    await db.commit()
+    await db.refresh(comment)
+    return CommentRead(
+        id=comment.id,
+        content=comment.content,
+        created_at=comment.created_at,
+        author=feed_author(current_user, stats),
+        can_delete=True,
+    )
+
+
+@router.delete("/comments/{comment_id}", status_code=204)
+async def delete_comment(
+    comment_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    comment = await db.get(PostComment, comment_id)
+    if not comment or comment.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found.")
+    await db.delete(comment)
+    await db.commit()
+
+
+@router.get("/notifications", response_model=list[NotificationRead])
+async def read_notifications(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[NotificationRead]:
+    rows = (
+        await db.execute(
+            select(Notification, User, UserStats)
+            .join(User, User.id == Notification.actor_id)
+            .outerjoin(UserStats, UserStats.user_id == User.id)
+            .where(Notification.recipient_id == current_user.id)
+            .order_by(Notification.created_at.desc())
+            .limit(30)
+        )
+    ).all()
+    return [
+        NotificationRead(
+            id=notification.id,
+            kind=notification.kind,
+            message=notification.message,
+            is_read=notification.is_read,
+            created_at=notification.created_at,
+            post_id=notification.post_id,
+            actor=feed_author(actor, stats),
+        )
+        for notification, actor, stats in rows
+    ]
+
+
+@router.post("/notifications/read", status_code=204)
+async def mark_notifications_read(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    notifications = list(
+        await db.scalars(
+            select(Notification).where(
+                Notification.recipient_id == current_user.id,
+                Notification.is_read.is_(False),
+            )
+        )
+    )
+    for notification in notifications:
+        notification.is_read = True
+    await db.commit()
+
+
 def profile_response(user: User, stats: UserStats) -> ProfileRead:
     return ProfileRead(
         id=user.id,
@@ -270,3 +437,29 @@ def profile_response(user: User, stats: UserStats) -> ProfileRead:
         avatar_url=user.avatar_url,
         gamification=gamification_snapshot(stats.xp_total, stats.current_streak),
     )
+
+
+def feed_author(user: User, stats: UserStats | None) -> FeedAuthor:
+    return FeedAuthor(
+        id=user.id,
+        display_name=user.display_name,
+        email=user.email,
+        avatar_url=user.avatar_url,
+        level=level_from_xp(stats.xp_total if stats else 0),
+    )
+
+
+async def visible_post(post_id: UUID, user_id: UUID, db: AsyncSession) -> ActivityPost:
+    post = await db.get(ActivityPost, post_id)
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found.")
+    if post.user_id != user_id:
+        follows = await db.scalar(
+            select(Follow.id).where(
+                Follow.follower_id == user_id,
+                Follow.followed_id == post.user_id,
+            )
+        )
+        if not follows:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Follow this user first.")
+    return post

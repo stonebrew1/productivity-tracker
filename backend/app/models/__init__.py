@@ -1,7 +1,16 @@
 from app.models.achievement import Achievement
 from app.models.category import Category
 from app.models.refresh_token import RefreshToken
-from app.models.social import ActivityPost, Follow, GamificationRule, PostReaction, QuestCompletion, XpAward
+from app.models.social import (
+    ActivityPost,
+    Follow,
+    GamificationRule,
+    Notification,
+    PostComment,
+    PostReaction,
+    QuestCompletion,
+    XpAward,
+)
 from app.models.task import Task, TaskPriority, TaskStatus, TaskVisibility
 from app.models.task_event import TaskEvent, TaskEventType
 from app.models.user import User, UserRole
@@ -14,6 +23,8 @@ __all__ = [
     "ActivityPost",
     "Follow",
     "GamificationRule",
+    "Notification",
+    "PostComment",
     "PostReaction",
     "QuestCompletion",
     "XpAward",

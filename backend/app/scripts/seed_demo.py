@@ -8,7 +8,16 @@ from app.core.database import AsyncSessionLocal, create_database_schema
 from app.core.security import hash_password
 from app.models.achievement import Achievement
 from app.models.category import Category
-from app.models.social import ActivityPost, Follow, GamificationRule, PostReaction, QuestCompletion, XpAward
+from app.models.social import (
+    ActivityPost,
+    Follow,
+    GamificationRule,
+    Notification,
+    PostComment,
+    PostReaction,
+    QuestCompletion,
+    XpAward,
+)
 from app.models.task import Task, TaskPriority, TaskStatus, TaskVisibility
 from app.models.task_event import TaskEvent, TaskEventType
 from app.models.user import User
@@ -106,6 +115,15 @@ async def seed_demo() -> None:
 
         seeded_users = [user, *peers]
         seeded_user_ids = [item.id for item in seeded_users]
+        await db.execute(
+            delete(Notification).where(
+                or_(
+                    Notification.recipient_id.in_(seeded_user_ids),
+                    Notification.actor_id.in_(seeded_user_ids),
+                )
+            )
+        )
+        await db.execute(delete(PostComment).where(PostComment.user_id.in_(seeded_user_ids)))
         await db.execute(delete(PostReaction).where(PostReaction.user_id.in_(seeded_user_ids)))
         await db.execute(delete(ActivityPost).where(ActivityPost.user_id.in_(seeded_user_ids)))
         await db.execute(
@@ -413,12 +431,59 @@ async def seed_demo() -> None:
                 PostReaction(post_id=demo_posts[1].id, user_id=peers[0].id),
             ]
         )
+        db.add_all(
+            [
+                PostComment(
+                    post_id=peer_posts[1].id,
+                    user_id=user.id,
+                    content="The consistency is showing. Nice work keeping the practice loop moving.",
+                    created_at=now - timedelta(hours=2),
+                ),
+                PostComment(
+                    post_id=demo_posts[0].id,
+                    user_id=peers[0].id,
+                    content="This is a strong milestone for the project. Keep the next step just as concrete.",
+                    created_at=now - timedelta(hours=1, minutes=20),
+                ),
+                PostComment(
+                    post_id=demo_posts[1].id,
+                    user_id=peers[1].id,
+                    content="Great progress. The steady pace is doing the heavy lifting here.",
+                    created_at=now - timedelta(minutes=45),
+                ),
+                Notification(
+                    kind="comment",
+                    message=f"commented on your completion of {demo_posts[0].task_title}",
+                    recipient_id=user.id,
+                    actor_id=peers[0].id,
+                    post_id=demo_posts[0].id,
+                    created_at=now - timedelta(hours=1, minutes=20),
+                ),
+                Notification(
+                    kind="comment",
+                    message=f"commented on your completion of {demo_posts[1].task_title}",
+                    recipient_id=user.id,
+                    actor_id=peers[1].id,
+                    post_id=demo_posts[1].id,
+                    created_at=now - timedelta(minutes=45),
+                ),
+                Notification(
+                    kind="reaction",
+                    message=f"encouraged your completion of {demo_posts[0].task_title}",
+                    recipient_id=user.id,
+                    actor_id=peers[1].id,
+                    post_id=demo_posts[0].id,
+                    is_read=True,
+                    created_at=now - timedelta(hours=3),
+                ),
+            ]
+        )
         await db.commit()
 
     print(
         f"Seeded {DEMO_EMAIL}: {len(TASK_BLUEPRINTS)} completed tasks, "
         f"{len(OPEN_TASKS)} active tasks, 3 deleted-task histories, gamification progress, "
-        f"and {len(SOCIAL_USERS)} social demo users."
+        f"and {len(SOCIAL_USERS)} social demo users with comments and notifications."
     )
 
 

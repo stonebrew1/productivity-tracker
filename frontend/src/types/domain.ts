@@ -143,6 +143,25 @@ export type FeedPost = {
   };
   reactions_count: number;
   reacted_by_me: boolean;
+  comments_count: number;
+};
+
+export type PostComment = {
+  id: string;
+  content: string;
+  created_at: string;
+  author: FeedPost["author"];
+  can_delete: boolean;
+};
+
+export type SocialNotification = {
+  id: string;
+  kind: "follow" | "reaction" | "comment";
+  message: string;
+  is_read: boolean;
+  created_at: string;
+  post_id: string | null;
+  actor: FeedPost["author"];
 };
 
 export type AnalyticsInterval = "day" | "week" | "month";
