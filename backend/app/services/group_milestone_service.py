@@ -72,6 +72,18 @@ async def create_milestone(
     await require_group_leader(group_id, leader_id, db)
     milestone = GroupMilestone(**payload.model_dump(), group_id=group_id)
     db.add(milestone)
+    await db.flush()
+    from app.services.group_activity_service import log_group_activity
+
+    await log_group_activity(
+        group_id,
+        leader_id,
+        "milestone_created",
+        f"Created the milestone: {milestone.title}",
+        db,
+        source_key=f"group-milestone:{milestone.id}:created",
+        created_at=milestone.created_at,
+    )
     await db.commit()
     await db.refresh(milestone)
     return await milestone_read(milestone, leader_id, db)

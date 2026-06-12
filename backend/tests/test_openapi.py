@@ -22,4 +22,7 @@ def test_openapi_schema_includes_analytics_route() -> None:
     assert "/api/groups/tasks/{task_id}" in schema["paths"]
     assert "/api/groups/{group_id}/milestones" in schema["paths"]
     assert "/api/groups/{group_id}/progress" in schema["paths"]
+    assert "/api/groups/{group_id}/activity" in schema["paths"]
+    assert "/api/groups/activity/{activity_id}/comments" in schema["paths"]
+    assert "/api/groups/activity/comments/{comment_id}" in schema["paths"]
     assert "/api/groups/milestones/{milestone_id}" in schema["paths"]

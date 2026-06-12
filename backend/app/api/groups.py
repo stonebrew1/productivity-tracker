@@ -8,6 +8,9 @@ from app.core.database import get_db
 from app.models.user import User
 from app.schemas.group import (
     GroupCreate,
+    GroupActivityCreate,
+    GroupActivityCommentRead,
+    GroupActivityRead,
     GroupInvitationRead,
     GroupInvite,
     GroupJoin,
@@ -42,6 +45,12 @@ from app.services.group_milestone_service import (
     update_milestone,
 )
 from app.services.group_progress_service import group_progress
+from app.services.group_activity_service import (
+    create_activity_comment,
+    create_group_update,
+    delete_activity_comment,
+    list_group_activity,
+)
 
 
 router = APIRouter(prefix="/groups", tags=["groups"])
@@ -144,6 +153,48 @@ async def read_group_progress(
     db: AsyncSession = Depends(get_db),
 ) -> GroupProgressRead:
     return await group_progress(group_id, current_user.id, db)
+
+
+@router.get("/{group_id}/activity", response_model=list[GroupActivityRead])
+async def read_group_activity(
+    group_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[GroupActivityRead]:
+    return await list_group_activity(group_id, current_user.id, db)
+
+
+@router.post("/{group_id}/activity", response_model=GroupActivityRead, status_code=201)
+async def post_group_update(
+    group_id: UUID,
+    payload: GroupActivityCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GroupActivityRead:
+    return await create_group_update(group_id, payload.content, current_user, db)
+
+
+@router.post(
+    "/activity/{activity_id}/comments",
+    response_model=GroupActivityCommentRead,
+    status_code=201,
+)
+async def post_group_activity_comment(
+    activity_id: UUID,
+    payload: GroupActivityCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GroupActivityCommentRead:
+    return await create_activity_comment(activity_id, payload.content, current_user, db)
+
+
+@router.delete("/activity/comments/{comment_id}", status_code=204)
+async def delete_group_activity_comment(
+    comment_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await delete_activity_comment(comment_id, current_user.id, db)
 
 
 @router.put("/tasks/{task_id}", response_model=GroupTaskRead)

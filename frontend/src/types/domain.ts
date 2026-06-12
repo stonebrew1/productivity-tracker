@@ -288,6 +288,29 @@ export type GroupProgress = {
   recent_rewards: GroupReward[];
 };
 
+export type GroupActivityAuthor = {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+};
+
+export type GroupActivityComment = {
+  id: string;
+  content: string;
+  created_at: string;
+  author: GroupActivityAuthor;
+  can_delete: boolean;
+};
+
+export type GroupActivity = {
+  id: string;
+  kind: "update" | "member_joined" | "task_created" | "task_status" | "task_assigned" | "task_completed" | "milestone_created" | "milestone_reached";
+  content: string;
+  created_at: string;
+  author: GroupActivityAuthor;
+  comments: GroupActivityComment[];
+};
+
 export type AnalyticsInterval = "day" | "week" | "month";
 
 export type TrendPoint = {

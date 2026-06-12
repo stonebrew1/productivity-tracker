@@ -7,6 +7,8 @@ import type {
   Challenge,
   FeedPost,
   GamificationDashboard,
+  GroupActivity,
+  GroupActivityComment,
   GroupInvitation,
   GroupMilestone,
   GroupProgress,
@@ -143,6 +145,19 @@ export const api = {
     request<ProductivityGroup>(`/groups/${id}/invite-code`, { method: "POST" }),
   groupTasks: (groupId: string) => request<GroupTask[]>(`/groups/${groupId}/tasks`),
   groupProgress: (groupId: string) => request<GroupProgress>(`/groups/${groupId}/progress`),
+  groupActivity: (groupId: string) => request<GroupActivity[]>(`/groups/${groupId}/activity`),
+  createGroupUpdate: (groupId: string, content: string) =>
+    request<GroupActivity>(`/groups/${groupId}/activity`, {
+      method: "POST",
+      body: JSON.stringify({ content })
+    }),
+  createGroupActivityComment: (activityId: string, content: string) =>
+    request<GroupActivityComment>(`/groups/activity/${activityId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content })
+    }),
+  deleteGroupActivityComment: (commentId: string) =>
+    request<void>(`/groups/activity/comments/${commentId}`, { method: "DELETE" }),
   createGroupTask: (groupId: string, payload: {
     title: string;
     description?: string | null;

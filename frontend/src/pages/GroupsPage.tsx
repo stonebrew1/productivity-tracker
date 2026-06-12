@@ -8,11 +8,11 @@ import {
   useSensor,
   useSensors
 } from "@dnd-kit/core";
-import { Award, CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Copy, Crown, Flag, Flame, GripVertical, KeyRound, LoaderCircle, Pencil, Plus, RefreshCw, Save, Shield, Trash2, Trophy, UserPlus, UsersRound, X, Zap } from "lucide-react";
+import { Activity, Award, CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Copy, Crown, Flag, Flame, GripVertical, KeyRound, LoaderCircle, MessageCircle, Pencil, Plus, RefreshCw, Save, Send, Shield, Trash2, Trophy, UserPlus, UsersRound, X, Zap } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { GroupInvitation, GroupMilestone, GroupProgress, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
+import type { GroupActivity, GroupInvitation, GroupMilestone, GroupProgress, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
 
 const TASK_COLUMNS = [
   ["todo", "To do", Circle],
@@ -34,6 +34,10 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
   const [tasks, setTasks] = useState<GroupTask[]>([]);
   const [milestones, setMilestones] = useState<GroupMilestone[]>([]);
   const [progress, setProgress] = useState<GroupProgress | null>(null);
+  const [activity, setActivity] = useState<GroupActivity[]>([]);
+  const [updateDraft, setUpdateDraft] = useState("");
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [openActivityId, setOpenActivityId] = useState<string | null>(null);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [taskPriority, setTaskPriority] = useState<TaskPriority>("medium");
@@ -73,13 +77,15 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       setTasks([]);
       setMilestones([]);
       setProgress(null);
+      setActivity([]);
       return;
     }
-    Promise.all([api.groupTasks(selectedId), api.groupMilestones(selectedId), api.groupProgress(selectedId)])
-      .then(([nextTasks, nextMilestones, nextProgress]) => {
+    Promise.all([api.groupTasks(selectedId), api.groupMilestones(selectedId), api.groupProgress(selectedId), api.groupActivity(selectedId)])
+      .then(([nextTasks, nextMilestones, nextProgress, nextActivity]) => {
         setTasks(nextTasks);
         setMilestones(nextMilestones);
         setProgress(nextProgress);
+        setActivity(nextActivity);
       })
       .catch((error) => onError(error instanceof Error ? error.message : "Unable to load group tasks"));
   }, [selectedId]);
@@ -122,14 +128,67 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
 
   async function refreshTasks(groupId = selectedId) {
     if (!groupId) return;
-    const [nextTasks, nextMilestones, nextProgress] = await Promise.all([
+    const [nextTasks, nextMilestones, nextProgress, nextActivity] = await Promise.all([
       api.groupTasks(groupId),
       api.groupMilestones(groupId),
-      api.groupProgress(groupId)
+      api.groupProgress(groupId),
+      api.groupActivity(groupId)
     ]);
     setTasks(nextTasks);
     setMilestones(nextMilestones);
     setProgress(nextProgress);
+    setActivity(nextActivity);
+  }
+
+  async function refreshActivity(groupId = selectedId) {
+    if (!groupId) return;
+    setActivity(await api.groupActivity(groupId));
+  }
+
+  async function submitUpdate(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedId || !updateDraft.trim()) return;
+    setBusy(true);
+    onError(null);
+    try {
+      await api.createGroupUpdate(selectedId, updateDraft.trim());
+      setUpdateDraft("");
+      await refreshActivity(selectedId);
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to share group update");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitActivityComment(event: FormEvent, activityId: string) {
+    event.preventDefault();
+    const content = commentDrafts[activityId]?.trim();
+    if (!content) return;
+    setBusy(true);
+    onError(null);
+    try {
+      await api.createGroupActivityComment(activityId, content);
+      setCommentDrafts((drafts) => ({ ...drafts, [activityId]: "" }));
+      await refreshActivity();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to post comment");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeActivityComment(commentId: string) {
+    setBusy(true);
+    onError(null);
+    try {
+      await api.deleteGroupActivityComment(commentId);
+      await refreshActivity();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to delete comment");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function submitGroupTask(event: FormEvent) {
@@ -236,6 +295,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
         ]);
         setMilestones(nextMilestones);
         setProgress(nextProgress);
+        setActivity(await api.groupActivity(selectedId));
       }
     } catch (error) {
       setTasks(previousTasks);
@@ -264,6 +324,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
   }
 
   const selected = groups.find((group) => group.id === selectedId) ?? null;
+  const currentGroupMember = progress?.leaderboard.find((entry) => entry.is_current_user);
   const eligiblePeople = people.filter(
     (person) => !selected?.members.some((member) => member.user_id === person.id)
   );
@@ -524,6 +585,62 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                 </DndContext>
               </section>
 
+              <section className="group-activity">
+                <div className="section-heading">
+                  <h2>Team activity</h2>
+                  <span><Activity size={13} />{activity.length} updates</span>
+                </div>
+                <form className="group-update-form" onSubmit={submitUpdate}>
+                  <span className="avatar">{currentGroupMember?.display_name.slice(0, 1).toUpperCase() ?? "Y"}</span>
+                  <input
+                    maxLength={500}
+                    placeholder="Share progress, a blocker, or a decision..."
+                    value={updateDraft}
+                    onChange={(event) => setUpdateDraft(event.target.value)}
+                  />
+                  <button title="Share update" disabled={busy || !updateDraft.trim()}><Send size={15} /></button>
+                </form>
+                <div className="group-activity-list">
+                  {activity.map((item) => {
+                    const discussionOpen = openActivityId === item.id;
+                    return (
+                      <article className={`group-activity-item ${item.kind}`} key={item.id}>
+                        <span className="group-activity-marker">{activityIcon(item.kind)}</span>
+                        <div className="group-activity-copy">
+                          <header><strong>{item.author.display_name}</strong><time>{relativeGroupTime(item.created_at)}</time></header>
+                          <p>{item.content}</p>
+                          <button className={discussionOpen ? "active" : ""} onClick={() => setOpenActivityId(discussionOpen ? null : item.id)}>
+                            <MessageCircle size={13} />{item.comments.length} {item.comments.length === 1 ? "comment" : "comments"}
+                          </button>
+                        </div>
+                        {discussionOpen && (
+                          <div className="group-activity-comments">
+                            {item.comments.map((comment) => (
+                              <div className="group-activity-comment" key={comment.id}>
+                                <span className="avatar">{comment.author.display_name.slice(0, 1).toUpperCase()}</span>
+                                <div><strong>{comment.author.display_name}</strong><p>{comment.content}</p><time>{relativeGroupTime(comment.created_at)}</time></div>
+                                {comment.can_delete && <button title="Delete comment" onClick={() => removeActivityComment(comment.id)}><Trash2 size={13} /></button>}
+                              </div>
+                            ))}
+                            {item.comments.length === 0 && <p className="muted compact-copy">No comments yet.</p>}
+                            <form onSubmit={(event) => submitActivityComment(event, item.id)}>
+                              <input
+                                maxLength={500}
+                                placeholder="Add context or ask a question..."
+                                value={commentDrafts[item.id] ?? ""}
+                                onChange={(event) => setCommentDrafts((drafts) => ({ ...drafts, [item.id]: event.target.value }))}
+                              />
+                              <button title="Post comment" disabled={busy || !commentDrafts[item.id]?.trim()}><Send size={14} /></button>
+                            </form>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                  {activity.length === 0 && <div className="group-task-empty"><Activity size={18} /><span>No group activity yet</span></div>}
+                </div>
+              </section>
+
               <section className="group-roster">
                 <div className="section-heading"><h2>Participants</h2><span>{selected.member_count} total</span></div>
                 {selected.members.map((member) => (
@@ -674,4 +791,21 @@ function GroupTaskPreview({ task }: { task: GroupTask }) {
       <div className="group-task-meta"><span><UserPlus size={12} />{task.assignee_name}</span></div>
     </article>
   );
+}
+
+function activityIcon(kind: GroupActivity["kind"]) {
+  if (kind === "task_completed" || kind === "milestone_reached") return <CheckCircle2 size={15} />;
+  if (kind.startsWith("milestone")) return <Flag size={15} />;
+  if (kind === "member_joined") return <UserPlus size={15} />;
+  if (kind.startsWith("task")) return <ClipboardList size={15} />;
+  return <MessageCircle size={15} />;
+}
+
+function relativeGroupTime(value: string) {
+  const seconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+  return new Date(value).toLocaleDateString();
 }

@@ -1,6 +1,8 @@
 from app.models.achievement import Achievement
 from app.models.category import Category
 from app.models.group import (
+    GroupActivity,
+    GroupActivityComment,
     GroupInvitation,
     GroupMember,
     GroupMilestone,
@@ -31,6 +33,8 @@ __all__ = [
     "Achievement",
     "Category",
     "ProductivityGroup",
+    "GroupActivity",
+    "GroupActivityComment",
     "GroupMember",
     "GroupMilestone",
     "GroupTask",

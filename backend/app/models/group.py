@@ -29,6 +29,7 @@ class ProductivityGroup(Base):
     tasks = relationship("GroupTask", back_populates="group", cascade="all, delete-orphan")
     milestones = relationship("GroupMilestone", back_populates="group", cascade="all, delete-orphan")
     xp_awards = relationship("GroupXpAward", back_populates="group", cascade="all, delete-orphan")
+    activities = relationship("GroupActivity", back_populates="group", cascade="all, delete-orphan")
 
 
 class GroupMember(Base):
@@ -151,4 +152,50 @@ class GroupXpAward(Base):
     )
 
     group = relationship("ProductivityGroup", back_populates="xp_awards")
+    user = relationship("User")
+
+
+class GroupActivity(Base):
+    __tablename__ = "group_activities"
+    __table_args__ = (
+        UniqueConstraint("source_key", name="uq_group_activities_source"),
+        Index("ix_group_activities_group_created", "group_id", "created_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    kind: Mapped[str] = mapped_column(String(40))
+    content: Mapped[str] = mapped_column(Text)
+    source_key: Mapped[str | None] = mapped_column(String(180), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    group_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("productivity_groups.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+
+    group = relationship("ProductivityGroup", back_populates="activities")
+    user = relationship("User")
+    comments = relationship("GroupActivityComment", back_populates="activity", cascade="all, delete-orphan")
+
+
+class GroupActivityComment(Base):
+    __tablename__ = "group_activity_comments"
+    __table_args__ = (Index("ix_group_activity_comments_activity_created", "activity_id", "created_at"),)
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    activity_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("group_activities.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+
+    activity = relationship("GroupActivity", back_populates="comments")
     user = relationship("User")

@@ -367,10 +367,10 @@ p { color: var(--muted); line-height: 1.6; }
 .group-invitations article button:last-child:hover { color: #f87171; }
 .groups-layout { display: grid; grid-template-columns: minmax(230px, .72fr) minmax(0, 1.65fr); align-items: start; gap: 18px; }
 .groups-sidebar { display: grid; gap: 14px; }
-.group-list-panel, .group-actions-panel, .group-hero, .group-progress, .leader-tools, .group-milestones, .group-work, .group-roster {
+.group-list-panel, .group-actions-panel, .group-hero, .group-progress, .leader-tools, .group-milestones, .group-work, .group-activity, .group-roster {
   border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1);
 }
-.group-list-panel, .group-actions-panel, .group-progress, .leader-tools, .group-milestones, .group-work, .group-roster { padding: 16px; }
+.group-list-panel, .group-actions-panel, .group-progress, .leader-tools, .group-milestones, .group-work, .group-activity, .group-roster { padding: 16px; }
 .group-list-panel > button {
   display: grid; width: 100%; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 9px;
   border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--text); padding: 9px; text-align: left;
@@ -531,6 +531,36 @@ p { color: var(--muted); line-height: 1.6; }
 .group-task-card footer button { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); }
 .group-task-card footer button:hover { border-color: rgba(239,68,68,.4); color: #f87171; }
 .group-task-empty { display: grid; min-height: 72px; place-items: center; align-content: center; gap: 5px; color: #4f4f68; font-size: .6rem; }
+.group-activity .section-heading span { display: flex; align-items: center; gap: 5px; }
+.group-update-form { display: grid; grid-template-columns: 34px minmax(0,1fr) 36px; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); padding: 9px; margin-bottom: 12px; }
+.group-update-form .avatar { width: 34px; height: 34px; font-size: .68rem; }
+.group-update-form input { min-height: 36px; border-color: transparent; background: transparent; font-size: .69rem; }
+.group-update-form input:focus { border-color: var(--border); background: var(--surface-1); }
+.group-update-form button, .group-activity-comments form button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; }
+.group-activity-list { display: grid; }
+.group-activity-item { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 10px; border-top: 1px solid var(--border); padding: 13px 3px; }
+.group-activity-item:first-child { border-top: 0; }
+.group-activity-marker { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 7px; background: var(--surface-3); color: var(--muted); }
+.group-activity-item.update .group-activity-marker { background: var(--violet-dim); color: #a78bfa; }
+.group-activity-item.task_completed .group-activity-marker, .group-activity-item.milestone_reached .group-activity-marker { background: rgba(16,185,129,.12); color: var(--emerald); }
+.group-activity-item.milestone_created .group-activity-marker { background: rgba(245,158,11,.1); color: var(--amber); }
+.group-activity-copy { min-width: 0; }
+.group-activity-copy header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.group-activity-copy header strong { font-size: .69rem; }
+.group-activity-copy time, .group-activity-comment time { color: var(--muted); font-size: .56rem; }
+.group-activity-copy > p { margin: 4px 0 6px; color: #c7c7d5; font-size: .68rem; line-height: 1.45; overflow-wrap: anywhere; }
+.group-activity-copy > button { display: flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--muted); padding: 2px 0; font-size: .58rem; }
+.group-activity-copy > button.active, .group-activity-copy > button:hover { color: #a78bfa; }
+.group-activity-comments { grid-column: 2; border-left: 1px solid var(--border); padding: 5px 0 0 12px; }
+.group-activity-comment { display: grid; grid-template-columns: 28px minmax(0,1fr) 28px; gap: 8px; padding: 7px 0; }
+.group-activity-comment .avatar { width: 28px; height: 28px; font-size: .59rem; }
+.group-activity-comment > div { min-width: 0; }
+.group-activity-comment strong { display: block; font-size: .62rem; }
+.group-activity-comment p { margin: 2px 0; font-size: .64rem; line-height: 1.4; overflow-wrap: anywhere; }
+.group-activity-comment > button { display: grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted); padding: 0; }
+.group-activity-comment > button:hover { background: rgba(239,68,68,.1); color: #f87171; }
+.group-activity-comments form { display: grid; grid-template-columns: minmax(0,1fr) 36px; gap: 7px; margin-top: 6px; }
+.group-activity-comments form input { min-height: 36px; font-size: .65rem; }
 
 /* Progression */
 .game-progress { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 24px; overflow: hidden; border: 1px solid rgba(124,58,237,.35); border-radius: 8px; background: radial-gradient(circle at 85% 0, rgba(124,58,237,.25), transparent 40%), var(--surface-1); padding: 25px; }
@@ -654,7 +684,7 @@ p { color: var(--muted); line-height: 1.6; }
   .group-join-form { grid-template-columns: minmax(0,1fr) auto; align-items: end; }
   .group-join-form h2 { grid-column: 1 / -1; }
   .group-join-form button { min-width: 105px; }
-  .group-progress, .group-milestones, .group-work, .group-roster { padding: 13px; }
+  .group-progress, .group-milestones, .group-work, .group-activity, .group-roster { padding: 13px; }
   .group-progress-grid { grid-template-columns: 1fr; gap: 12px; }
   .milestone-list article { grid-template-columns: 34px minmax(0,1fr); padding: 10px; }
   .milestone-icon { width: 34px; height: 34px; }

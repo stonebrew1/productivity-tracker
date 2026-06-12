@@ -139,3 +139,30 @@ class GroupProgressRead(BaseModel):
     team_streak: int
     leaderboard: list[GroupLeaderboardEntry]
     recent_rewards: list[GroupRewardRead]
+
+
+class GroupActivityCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=500)
+
+
+class GroupActivityAuthor(BaseModel):
+    id: UUID
+    display_name: str
+    avatar_url: str | None
+
+
+class GroupActivityCommentRead(BaseModel):
+    id: UUID
+    content: str
+    created_at: datetime
+    author: GroupActivityAuthor
+    can_delete: bool
+
+
+class GroupActivityRead(BaseModel):
+    id: UUID
+    kind: str
+    content: str
+    created_at: datetime
+    author: GroupActivityAuthor
+    comments: list[GroupActivityCommentRead]

@@ -74,6 +74,18 @@ async def create_group_task(
     await validate_milestone(payload.milestone_id, group_id, db)
     task = GroupTask(**payload.model_dump(), group_id=group_id, created_by_id=leader.id)
     db.add(task)
+    await db.flush()
+    from app.services.group_activity_service import log_group_activity
+
+    await log_group_activity(
+        group_id,
+        leader.id,
+        "task_created",
+        f"Created the task: {task.title}",
+        db,
+        source_key=f"group-task:{task.id}:created",
+        created_at=task.created_at,
+    )
     if payload.assigned_to_id != leader.id:
         db.add(
             Notification(
@@ -146,6 +158,40 @@ async def update_group_task(
         from app.services.group_progress_service import award_task_completion
 
         await award_task_completion(task, db)
+    from app.services.group_activity_service import log_group_activity
+
+    if task.status == TaskStatus.DONE and previous_status != TaskStatus.DONE:
+        await log_group_activity(
+            task.group_id,
+            user.id,
+            "task_completed",
+            f"Completed the task: {task.title}",
+            db,
+            source_key=f"group-task:{task.id}:completed",
+            created_at=task.completed_at,
+        )
+    elif task.status != previous_status:
+        status_label = {
+            TaskStatus.TODO: "To do",
+            TaskStatus.IN_PROGRESS: "In progress",
+            TaskStatus.DONE: "Done",
+        }[task.status]
+        await log_group_activity(
+            task.group_id,
+            user.id,
+            "task_status",
+            f"Moved {task.title} to {status_label}",
+            db,
+        )
+    if task.assigned_to_id != previous_assignee_id:
+        assignee = await db.get(User, task.assigned_to_id)
+        await log_group_activity(
+            task.group_id,
+            user.id,
+            "task_assigned",
+            f"Assigned {task.title} to {assignee.display_name or assignee.email.split('@')[0]}",
+            db,
+        )
     await db.commit()
     await db.refresh(task)
     return await task_read(task, user.id, db)
