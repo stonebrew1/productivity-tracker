@@ -180,6 +180,7 @@ class GroupActivity(Base):
     group = relationship("ProductivityGroup", back_populates="activities")
     user = relationship("User")
     comments = relationship("GroupActivityComment", back_populates="activity", cascade="all, delete-orphan")
+    reactions = relationship("GroupActivityReaction", back_populates="activity", cascade="all, delete-orphan")
 
 
 class GroupActivityComment(Base):
@@ -199,6 +200,27 @@ class GroupActivityComment(Base):
     )
 
     activity = relationship("GroupActivity", back_populates="comments")
+    user = relationship("User")
+
+
+class GroupActivityReaction(Base):
+    __tablename__ = "group_activity_reactions"
+    __table_args__ = (
+        UniqueConstraint("activity_id", "user_id", name="uq_group_activity_reactions_user"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    activity_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("group_activities.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+
+    activity = relationship("GroupActivity", back_populates="reactions")
     user = relationship("User")
 
 

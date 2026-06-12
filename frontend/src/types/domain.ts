@@ -309,6 +309,9 @@ export type GroupActivity = {
   created_at: string;
   author: GroupActivityAuthor;
   comments: GroupActivityComment[];
+  reactions_count: number;
+  reacted_by_me: boolean;
+  can_react: boolean;
 };
 
 export type GroupChallenge = {

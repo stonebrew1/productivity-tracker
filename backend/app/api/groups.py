@@ -53,6 +53,8 @@ from app.services.group_activity_service import (
     create_group_update,
     delete_activity_comment,
     list_group_activity,
+    react_to_activity,
+    remove_activity_reaction,
 )
 from app.services.group_analytics_service import group_analytics
 from app.services.group_challenge_service import (
@@ -241,6 +243,27 @@ async def delete_group_activity_comment(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     await delete_activity_comment(comment_id, current_user.id, db)
+
+
+@router.post(
+    "/activity/{activity_id}/recognition",
+    response_model=GroupActivityRead,
+)
+async def recognize_group_activity(
+    activity_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GroupActivityRead:
+    return await react_to_activity(activity_id, current_user, db)
+
+
+@router.delete("/activity/{activity_id}/recognition", status_code=204)
+async def remove_group_activity_recognition(
+    activity_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await remove_activity_reaction(activity_id, current_user.id, db)
 
 
 @router.put("/tasks/{task_id}", response_model=GroupTaskRead)

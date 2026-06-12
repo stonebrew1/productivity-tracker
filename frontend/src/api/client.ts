@@ -169,6 +169,10 @@ export const api = {
     }),
   deleteGroupActivityComment: (commentId: string) =>
     request<void>(`/groups/activity/comments/${commentId}`, { method: "DELETE" }),
+  recognizeGroupActivity: (activityId: string) =>
+    request<GroupActivity>(`/groups/activity/${activityId}/recognition`, { method: "POST" }),
+  removeGroupActivityRecognition: (activityId: string) =>
+    request<void>(`/groups/activity/${activityId}/recognition`, { method: "DELETE" }),
   createGroupTask: (groupId: string, payload: {
     title: string;
     description?: string | null;

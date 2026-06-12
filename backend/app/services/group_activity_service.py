@@ -2,18 +2,20 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.group import (
     GroupActivity,
     GroupActivityComment,
+    GroupActivityReaction,
     GroupMember,
     GroupMilestone,
     GroupTask,
     ProductivityGroup,
 )
 from app.models.task import TaskStatus
+from app.models.social import Notification
 from app.models.user import User
 from app.schemas.group import (
     GroupActivityAuthor,
@@ -21,6 +23,9 @@ from app.schemas.group import (
     GroupActivityRead,
 )
 from app.services.group_task_service import require_membership
+from app.services.group_progress_service import add_group_xp_award
+
+RECOGNITION_XP = 5
 
 
 async def log_group_activity(
@@ -134,6 +139,19 @@ async def activity_read(
             .order_by(GroupActivityComment.created_at.asc())
         )
     ).all()
+    reactions_count = await db.scalar(
+        select(func.count()).select_from(GroupActivityReaction).where(
+            GroupActivityReaction.activity_id == activity.id
+        )
+    ) or 0
+    reacted_by_me = bool(
+        await db.scalar(
+            select(GroupActivityReaction.id).where(
+                GroupActivityReaction.activity_id == activity.id,
+                GroupActivityReaction.user_id == viewer_id,
+            )
+        )
+    )
     return GroupActivityRead(
         id=activity.id,
         kind=activity.kind,
@@ -150,6 +168,9 @@ async def activity_read(
             )
             for comment, author in rows
         ],
+        reactions_count=reactions_count,
+        reacted_by_me=reacted_by_me,
+        can_react=activity.user_id != viewer_id,
     )
 
 
@@ -227,3 +248,61 @@ async def delete_activity_comment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found.")
     await db.delete(comment)
     await db.commit()
+
+
+async def react_to_activity(
+    activity_id: UUID, user: User, db: AsyncSession
+) -> GroupActivityRead:
+    activity = await db.get(GroupActivity, activity_id)
+    if not activity:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity not found.")
+    await require_membership(activity.group_id, user.id, db)
+    if activity.user_id == user.id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="You cannot recognize your own activity.")
+    existing = await db.scalar(
+        select(GroupActivityReaction).where(
+            GroupActivityReaction.activity_id == activity.id,
+            GroupActivityReaction.user_id == user.id,
+        )
+    )
+    if not existing:
+        db.add(GroupActivityReaction(activity_id=activity.id, user_id=user.id))
+        awarded = await add_group_xp_award(
+            activity.group_id,
+            activity.user_id,
+            f"group-recognition:{activity.id}:from:{user.id}",
+            f"Recognition from {user.display_name or user.email.split('@')[0]}",
+            RECOGNITION_XP,
+            datetime.now(timezone.utc),
+            db,
+        )
+        if awarded:
+            db.add(
+                Notification(
+                    kind="group",
+                    message=f"recognized your contribution: {activity.content[:120]}",
+                    recipient_id=activity.user_id,
+                    actor_id=user.id,
+                )
+            )
+        await db.commit()
+    group = await db.get(ProductivityGroup, activity.group_id)
+    return await activity_read(activity, user.id, group.leader_id, db)
+
+
+async def remove_activity_reaction(
+    activity_id: UUID, user_id: UUID, db: AsyncSession
+) -> None:
+    activity = await db.get(GroupActivity, activity_id)
+    if not activity:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity not found.")
+    await require_membership(activity.group_id, user_id, db)
+    reaction = await db.scalar(
+        select(GroupActivityReaction).where(
+            GroupActivityReaction.activity_id == activity.id,
+            GroupActivityReaction.user_id == user_id,
+        )
+    )
+    if reaction:
+        await db.delete(reaction)
+        await db.commit()

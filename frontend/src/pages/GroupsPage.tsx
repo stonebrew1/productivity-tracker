@@ -8,7 +8,7 @@ import {
   useSensor,
   useSensors
 } from "@dnd-kit/core";
-import { Activity, AlertTriangle, Award, BarChart3, CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Clock3, Copy, Crown, Flag, Flame, Gauge, GripVertical, KeyRound, LoaderCircle, MessageCircle, Pencil, Plus, RefreshCw, Save, Send, Shield, Target, Trash2, Trophy, UserPlus, UsersRound, X, Zap } from "lucide-react";
+import { Activity, AlertTriangle, Award, BarChart3, CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Clock3, Copy, Crown, Flag, Flame, Gauge, GripVertical, Heart, KeyRound, LoaderCircle, MessageCircle, Pencil, Plus, RefreshCw, Save, Send, Shield, Target, Trash2, Trophy, UserPlus, UsersRound, X, Zap } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
@@ -242,6 +242,35 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       onError(error instanceof Error ? error.message : "Unable to delete comment");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function toggleRecognition(item: GroupActivity) {
+    if (!item.can_react) return;
+    onError(null);
+    const previousActivity = activity;
+    setActivity((items) => items.map((entry) => entry.id === item.id ? {
+      ...entry,
+      reacted_by_me: !entry.reacted_by_me,
+      reactions_count: entry.reactions_count + (entry.reacted_by_me ? -1 : 1)
+    } : entry));
+    try {
+      if (item.reacted_by_me) {
+        await api.removeGroupActivityRecognition(item.id);
+      } else {
+        await api.recognizeGroupActivity(item.id);
+      }
+      if (selectedId) {
+        const [nextActivity, nextProgress] = await Promise.all([
+          api.groupActivity(selectedId),
+          api.groupProgress(selectedId)
+        ]);
+        setActivity(nextActivity);
+        setProgress(nextProgress);
+      }
+    } catch (error) {
+      setActivity(previousActivity);
+      onError(error instanceof Error ? error.message : "Unable to update recognition");
     }
   }
 
@@ -705,9 +734,19 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                         <div className="group-activity-copy">
                           <header><strong>{item.author.display_name}</strong><time>{relativeGroupTime(item.created_at)}</time></header>
                           <p>{item.content}</p>
-                          <button className={discussionOpen ? "active" : ""} onClick={() => setOpenActivityId(discussionOpen ? null : item.id)}>
-                            <MessageCircle size={13} />{item.comments.length} {item.comments.length === 1 ? "comment" : "comments"}
-                          </button>
+                          <div className="group-activity-actions">
+                            <button
+                              className={item.reacted_by_me ? "recognized" : ""}
+                              disabled={!item.can_react}
+                              title={item.can_react ? item.reacted_by_me ? "Remove recognition" : "Recognize contribution (+5 group XP)" : "This is your activity"}
+                              onClick={() => toggleRecognition(item)}
+                            >
+                              <Heart size={13} />{item.reactions_count}
+                            </button>
+                            <button className={discussionOpen ? "active" : ""} onClick={() => setOpenActivityId(discussionOpen ? null : item.id)}>
+                              <MessageCircle size={13} />{item.comments.length} {item.comments.length === 1 ? "comment" : "comments"}
+                            </button>
+                          </div>
                         </div>
                         {discussionOpen && (
                           <div className="group-activity-comments">

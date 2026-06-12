@@ -166,6 +166,9 @@ class GroupActivityRead(BaseModel):
     created_at: datetime
     author: GroupActivityAuthor
     comments: list[GroupActivityCommentRead]
+    reactions_count: int
+    reacted_by_me: bool
+    can_react: bool
 
 
 class GroupVelocityPoint(BaseModel):

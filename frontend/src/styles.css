@@ -604,8 +604,12 @@ p { color: var(--muted); line-height: 1.6; }
 .group-activity-copy header strong { font-size: .69rem; }
 .group-activity-copy time, .group-activity-comment time { color: var(--muted); font-size: .56rem; }
 .group-activity-copy > p { margin: 4px 0 6px; color: #c7c7d5; font-size: .68rem; line-height: 1.45; overflow-wrap: anywhere; }
-.group-activity-copy > button { display: flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--muted); padding: 2px 0; font-size: .58rem; }
-.group-activity-copy > button.active, .group-activity-copy > button:hover { color: #a78bfa; }
+.group-activity-actions { display: flex; align-items: center; gap: 12px; }
+.group-activity-actions button { display: flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--muted); padding: 2px 0; font-size: .58rem; }
+.group-activity-actions button.active, .group-activity-actions button:hover:not(:disabled) { color: #a78bfa; }
+.group-activity-actions button.recognized { color: #f472b6; }
+.group-activity-actions button.recognized svg { fill: currentColor; }
+.group-activity-actions button:disabled { opacity: .45; cursor: default; }
 .group-activity-comments { grid-column: 2; border-left: 1px solid var(--border); padding: 5px 0 0 12px; }
 .group-activity-comment { display: grid; grid-template-columns: 28px minmax(0,1fr) 28px; gap: 8px; padding: 7px 0; }
 .group-activity-comment .avatar { width: 28px; height: 28px; font-size: .59rem; }
