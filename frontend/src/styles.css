@@ -646,8 +646,9 @@ p { color: var(--muted); line-height: 1.6; }
   .content-inner { padding: 23px 14px 42px; }
   .mobile-header { padding: 0 14px; }
   .page-header { align-items: flex-start; margin-bottom: 22px; }
-  .page-header .primary-action { width: 42px; flex: 0 0 42px; overflow: hidden; padding: 0; color: transparent; gap: 0; }
-  .page-header .primary-action svg { color: white; }
+  .page-header .primary-action { width: 42px; flex: 0 0 42px; overflow: hidden; padding: 0; gap: 0; }
+  .page-header .primary-action span { display: none; }
+  .page-header .primary-action svg { flex: 0 0 auto; color: white; }
   .quick-add { grid-template-columns: 1fr; padding: 10px; }
   .quick-add-title, .quick-add > button { grid-column: auto; }
   .today-summary { gap: 0; }

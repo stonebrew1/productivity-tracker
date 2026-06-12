@@ -94,7 +94,14 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
     <section className="tasks-page">
       <header className="page-header">
         <div><h1>Tasks</h1><p>Organize the work that moves your goals forward.</p></div>
-        <button className="primary-action" onClick={() => setComposerOpen((value) => !value)}>{composerOpen ? <X size={17} /> : <Plus size={17} />}{composerOpen ? "Close" : "New task"}</button>
+        <button
+          aria-label={composerOpen ? "Close task form" : "Create new task"}
+          className="primary-action"
+          onClick={() => setComposerOpen((value) => !value)}
+        >
+          {composerOpen ? <X size={19} /> : <Plus size={19} />}
+          <span>{composerOpen ? "Close" : "New task"}</span>
+        </button>
       </header>
 
       {composerOpen && (
