@@ -1,8 +1,24 @@
-import { Check, Copy, Crown, KeyRound, Plus, RefreshCw, Shield, UserPlus, UsersRound, X } from "lucide-react";
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors
+} from "@dnd-kit/core";
+import { CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Copy, Crown, GripVertical, KeyRound, LoaderCircle, Plus, RefreshCw, Shield, Trash2, UserPlus, UsersRound, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { GroupInvitation, Person, ProductivityGroup } from "../types/domain";
+import type { GroupInvitation, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
+
+const TASK_COLUMNS = [
+  ["todo", "To do", Circle],
+  ["in_progress", "In progress", LoaderCircle],
+  ["done", "Done", CheckCircle2]
+] as const;
 
 export function GroupsPage({ onError }: { onError: (message: string | null) => void }) {
   const [groups, setGroups] = useState<ProductivityGroup[]>([]);
@@ -15,6 +31,16 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
   const [inviteUserId, setInviteUserId] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [tasks, setTasks] = useState<GroupTask[]>([]);
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDescription, setTaskDescription] = useState("");
+  const [taskPriority, setTaskPriority] = useState<TaskPriority>("medium");
+  const [taskDeadline, setTaskDeadline] = useState("");
+  const [taskAssignee, setTaskAssignee] = useState("");
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const dragSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
 
   async function loadGroups(preferredId?: string) {
     const [nextGroups, nextInvitations, nextPeople] = await Promise.all([
@@ -34,6 +60,16 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       onError(error instanceof Error ? error.message : "Unable to load groups")
     );
   }, []);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setTasks([]);
+      return;
+    }
+    api.groupTasks(selectedId)
+      .then(setTasks)
+      .catch((error) => onError(error instanceof Error ? error.message : "Unable to load group tasks"));
+  }, [selectedId]);
 
   async function mutate(action: () => Promise<unknown>, preferredId?: string) {
     setBusy(true);
@@ -69,6 +105,84 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       setJoinCode("");
     }, joinedId);
     if (joinedId) setSelectedId(joinedId);
+  }
+
+  async function refreshTasks(groupId = selectedId) {
+    if (!groupId) return;
+    setTasks(await api.groupTasks(groupId));
+  }
+
+  async function submitGroupTask(event: FormEvent) {
+    event.preventDefault();
+    if (!selected || !taskAssignee) return;
+    setBusy(true);
+    onError(null);
+    try {
+      await api.createGroupTask(selected.id, {
+        title: taskTitle,
+        description: taskDescription || null,
+        priority: taskPriority,
+        deadline: taskDeadline ? new Date(`${taskDeadline}T23:59:59`).toISOString() : null,
+        assigned_to_id: taskAssignee
+      });
+      setTaskTitle("");
+      setTaskDescription("");
+      setTaskPriority("medium");
+      setTaskDeadline("");
+      await refreshTasks(selected.id);
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to create group task");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function changeTask(taskId: string, payload: { status?: TaskStatus; assigned_to_id?: string }) {
+    setBusy(true);
+    onError(null);
+    try {
+      await api.updateGroupTask(taskId, payload);
+      await refreshTasks();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to update group task");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function moveTask(taskId: string, status: TaskStatus) {
+    const current = tasks.find((task) => task.id === taskId);
+    if (!current || !current.can_update_status || current.status === status) return;
+    const previousTasks = tasks;
+    setTasks((items) => items.map((task) => task.id === taskId ? { ...task, status } : task));
+    onError(null);
+    try {
+      const updated = await api.updateGroupTask(taskId, { status });
+      setTasks((items) => items.map((task) => task.id === taskId ? updated : task));
+    } catch (error) {
+      setTasks(previousTasks);
+      onError(error instanceof Error ? error.message : "Unable to move group task");
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveTaskId(null);
+    const destination = event.over?.id as TaskStatus | undefined;
+    if (!destination || !TASK_COLUMNS.some(([status]) => status === destination)) return;
+    void moveTask(String(event.active.id), destination);
+  }
+
+  async function removeTask(taskId: string) {
+    setBusy(true);
+    onError(null);
+    try {
+      await api.deleteGroupTask(taskId);
+      await refreshTasks();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to delete group task");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const selected = groups.find((group) => group.id === selectedId) ?? null;
@@ -178,6 +292,74 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                 </section>
               )}
 
+              <section className="group-work">
+                <div className="section-heading">
+                  <h2>Shared tasks</h2>
+                  <span>{tasks.filter((task) => task.status === "done").length} / {tasks.length} complete</span>
+                </div>
+
+                {selected.role === "leader" && (
+                  <form className="group-task-form" onSubmit={submitGroupTask}>
+                    <div>
+                      <label>Task</label>
+                      <input placeholder="Define the next concrete result" value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} required />
+                    </div>
+                    <div>
+                      <label>Assign to</label>
+                      <select value={taskAssignee} onChange={(event) => setTaskAssignee(event.target.value)} required>
+                        <option value="">Choose participant</option>
+                        {selected.members.map((member) => <option value={member.user_id} key={member.user_id}>{member.display_name || member.email.split("@")[0]}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label>Priority</label>
+                      <select value={taskPriority} onChange={(event) => setTaskPriority(event.target.value as TaskPriority)}>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label>Due date</label>
+                      <input type="date" value={taskDeadline} onChange={(event) => setTaskDeadline(event.target.value)} />
+                    </div>
+                    <div className="group-task-description">
+                      <label>Details</label>
+                      <input placeholder="Optional context or acceptance criteria" value={taskDescription} onChange={(event) => setTaskDescription(event.target.value)} />
+                    </div>
+                    <button disabled={busy}><Plus size={15} />Assign task</button>
+                  </form>
+                )}
+
+                <DndContext
+                  sensors={dragSensors}
+                  onDragStart={(event) => setActiveTaskId(String(event.active.id))}
+                  onDragCancel={() => setActiveTaskId(null)}
+                  onDragEnd={handleDragEnd}
+                >
+                  <div className="group-task-board">
+                    {TASK_COLUMNS.map(([status, label, Icon]) => (
+                      <GroupTaskColumn
+                        icon={Icon}
+                        key={status}
+                        label={label}
+                        members={selected.members}
+                        onAssigneeChange={(taskId, assignedToId) => changeTask(taskId, { assigned_to_id: assignedToId })}
+                        onDelete={removeTask}
+                        onStatusChange={(taskId, nextStatus) => changeTask(taskId, { status: nextStatus })}
+                        status={status}
+                        tasks={tasks.filter((task) => task.status === status)}
+                      />
+                    ))}
+                  </div>
+                  <DragOverlay>
+                    {activeTaskId && tasks.find((task) => task.id === activeTaskId)
+                      ? <GroupTaskPreview task={tasks.find((task) => task.id === activeTaskId)!} />
+                      : null}
+                  </DragOverlay>
+                </DndContext>
+              </section>
+
               <section className="group-roster">
                 <div className="section-heading"><h2>Participants</h2><span>{selected.member_count} total</span></div>
                 {selected.members.map((member) => (
@@ -194,5 +376,121 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
         </main>
       </div>
     </section>
+  );
+}
+
+type GroupTaskColumnProps = {
+  icon: typeof Circle;
+  label: string;
+  members: ProductivityGroup["members"];
+  onAssigneeChange: (taskId: string, assignedToId: string) => void;
+  onDelete: (taskId: string) => void;
+  onStatusChange: (taskId: string, status: TaskStatus) => void;
+  status: TaskStatus;
+  tasks: GroupTask[];
+};
+
+function GroupTaskColumn({
+  icon: Icon,
+  label,
+  members,
+  onAssigneeChange,
+  onDelete,
+  onStatusChange,
+  status,
+  tasks
+}: GroupTaskColumnProps) {
+  const { isOver, setNodeRef } = useDroppable({ id: status });
+
+  return (
+    <section className={`group-task-column ${status} ${isOver ? "drag-over" : ""}`} ref={setNodeRef}>
+      <header><span><Icon size={14} />{label}</span><b>{tasks.length}</b></header>
+      <div>
+        {tasks.map((task) => (
+          <DraggableGroupTask
+            key={task.id}
+            members={members}
+            onAssigneeChange={onAssigneeChange}
+            onDelete={onDelete}
+            onStatusChange={onStatusChange}
+            task={task}
+          />
+        ))}
+        {tasks.length === 0 && <div className="group-task-empty"><ClipboardList size={17} /><span>No tasks</span></div>}
+      </div>
+    </section>
+  );
+}
+
+function DraggableGroupTask({
+  members,
+  onAssigneeChange,
+  onDelete,
+  onStatusChange,
+  task
+}: {
+  members: ProductivityGroup["members"];
+  onAssigneeChange: (taskId: string, assignedToId: string) => void;
+  onDelete: (taskId: string) => void;
+  onStatusChange: (taskId: string, status: TaskStatus) => void;
+  task: GroupTask;
+}) {
+  const { attributes, isDragging, listeners, setNodeRef } = useDraggable({
+    id: task.id,
+    disabled: !task.can_update_status
+  });
+
+  return (
+    <article className={`group-task-card ${isDragging ? "dragging" : ""}`} ref={setNodeRef}>
+      <div className="group-task-card-title">
+        <i className={`priority-dot ${task.priority}`} />
+        <strong>{task.title}</strong>
+        {task.can_update_status && (
+          <button
+            aria-label={`Move ${task.title}`}
+            className="group-task-drag-handle"
+            title="Drag to change status"
+            type="button"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical size={15} />
+          </button>
+        )}
+      </div>
+      {task.description && <p>{task.description}</p>}
+      <div className="group-task-meta">
+        <span><UserPlus size={12} />{task.assignee_name}</span>
+        {task.deadline && <span><CalendarDays size={12} />{new Date(task.deadline).toLocaleDateString()}</span>}
+      </div>
+      {task.can_manage && (
+        <select aria-label={`Assignee for ${task.title}`} value={task.assigned_to_id} onChange={(event) => onAssigneeChange(task.id, event.target.value)}>
+          {members.map((member) => <option value={member.user_id} key={member.user_id}>{member.display_name || member.email.split("@")[0]}</option>)}
+        </select>
+      )}
+      <footer>
+        {task.can_update_status ? (
+          <select aria-label={`Status for ${task.title}`} value={task.status} onChange={(event) => onStatusChange(task.id, event.target.value as TaskStatus)}>
+            <option value="todo">To do</option>
+            <option value="in_progress">In progress</option>
+            <option value="done">Done</option>
+          </select>
+        ) : <span>Assigned to {task.assignee_name}</span>}
+        {task.can_manage && <button title="Delete group task" type="button" onClick={() => onDelete(task.id)}><Trash2 size={14} /></button>}
+      </footer>
+    </article>
+  );
+}
+
+function GroupTaskPreview({ task }: { task: GroupTask }) {
+  return (
+    <article className="group-task-card drag-preview">
+      <div className="group-task-card-title">
+        <i className={`priority-dot ${task.priority}`} />
+        <strong>{task.title}</strong>
+        <GripVertical size={15} />
+      </div>
+      <div className="group-task-meta"><span><UserPlus size={12} />{task.assignee_name}</span></div>
+    </article>
   );
 }

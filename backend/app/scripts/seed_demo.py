@@ -8,7 +8,7 @@ from app.core.database import AsyncSessionLocal, create_database_schema
 from app.core.security import hash_password
 from app.models.achievement import Achievement
 from app.models.category import Category
-from app.models.group import GroupInvitation, GroupMember, ProductivityGroup
+from app.models.group import GroupInvitation, GroupMember, GroupTask, ProductivityGroup
 from app.models.social import (
     ActivityPost,
     AccountabilityCommitment,
@@ -125,6 +125,7 @@ async def seed_demo() -> None:
             )
         )
         if seeded_group_ids:
+            await db.execute(delete(GroupTask).where(GroupTask.group_id.in_(seeded_group_ids)))
             await db.execute(
                 delete(GroupInvitation).where(GroupInvitation.group_id.in_(seeded_group_ids))
             )
@@ -594,6 +595,51 @@ async def seed_demo() -> None:
                     actor_id=user.id,
                     created_at=now - timedelta(hours=8),
                 ),
+                GroupTask(
+                    group_id=demo_group.id,
+                    title="Approve project scope",
+                    description="Confirm the final research question and success criteria.",
+                    priority=TaskPriority.HIGH,
+                    status=TaskStatus.DONE,
+                    deadline=now - timedelta(days=5),
+                    completed_at=now - timedelta(days=6),
+                    assigned_to_id=user.id,
+                    created_by_id=user.id,
+                    created_at=now - timedelta(days=11),
+                ),
+                GroupTask(
+                    group_id=demo_group.id,
+                    title="Prepare usability test script",
+                    description="Write the five moderated testing prompts for the prototype.",
+                    priority=TaskPriority.HIGH,
+                    status=TaskStatus.IN_PROGRESS,
+                    deadline=now + timedelta(days=2),
+                    assigned_to_id=peers[0].id,
+                    created_by_id=user.id,
+                    created_at=now - timedelta(days=4),
+                ),
+                GroupTask(
+                    group_id=demo_group.id,
+                    title="Review architecture diagram",
+                    description="Check service boundaries and database relationships.",
+                    priority=TaskPriority.MEDIUM,
+                    status=TaskStatus.TODO,
+                    deadline=now + timedelta(days=4),
+                    assigned_to_id=user.id,
+                    created_by_id=user.id,
+                    created_at=now - timedelta(days=2),
+                ),
+                GroupTask(
+                    group_id=demo_group.id,
+                    title="Collect defense questions",
+                    description="Add likely examiner questions to the shared preparation list.",
+                    priority=TaskPriority.LOW,
+                    status=TaskStatus.TODO,
+                    deadline=now + timedelta(days=7),
+                    assigned_to_id=peers[0].id,
+                    created_by_id=user.id,
+                    created_at=now - timedelta(days=1),
+                ),
             ]
         )
         await db.commit()
@@ -602,7 +648,7 @@ async def seed_demo() -> None:
         f"Seeded {DEMO_EMAIL}: {len(TASK_BLUEPRINTS)} completed tasks, "
         f"{len(OPEN_TASKS)} active tasks, 3 deleted-task histories, gamification progress, "
         f"{len(SOCIAL_USERS)} social demo users, 2 collaborative challenges, "
-        "1 accepted accountability commitment, and 1 group workspace."
+        "1 accepted accountability commitment, and 1 group workspace with 4 shared tasks."
     )
 
 

@@ -6,7 +6,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.user import User
-from app.schemas.group import GroupCreate, GroupInvitationRead, GroupInvite, GroupJoin, GroupRead
+from app.schemas.group import (
+    GroupCreate,
+    GroupInvitationRead,
+    GroupInvite,
+    GroupJoin,
+    GroupRead,
+    GroupTaskCreate,
+    GroupTaskRead,
+    GroupTaskUpdate,
+)
 from app.services.group_service import (
     create_group,
     invite_user,
@@ -15,6 +24,12 @@ from app.services.group_service import (
     list_invitations,
     respond_invitation,
     rotate_invite_code,
+)
+from app.services.group_task_service import (
+    create_group_task,
+    delete_group_task,
+    list_group_tasks,
+    update_group_task,
 )
 
 
@@ -90,3 +105,41 @@ async def regenerate_group_code(
     db: AsyncSession = Depends(get_db),
 ) -> GroupRead:
     return await rotate_invite_code(group_id, current_user.id, db)
+
+
+@router.get("/{group_id}/tasks", response_model=list[GroupTaskRead])
+async def read_group_tasks(
+    group_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[GroupTaskRead]:
+    return await list_group_tasks(group_id, current_user.id, db)
+
+
+@router.post("/{group_id}/tasks", response_model=GroupTaskRead, status_code=201)
+async def create_group_task_route(
+    group_id: UUID,
+    payload: GroupTaskCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GroupTaskRead:
+    return await create_group_task(group_id, payload, current_user, db)
+
+
+@router.put("/tasks/{task_id}", response_model=GroupTaskRead)
+async def update_group_task_route(
+    task_id: UUID,
+    payload: GroupTaskUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GroupTaskRead:
+    return await update_group_task(task_id, payload, current_user, db)
+
+
+@router.delete("/tasks/{task_id}", status_code=204)
+async def delete_group_task_route(
+    task_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await delete_group_task(task_id, current_user.id, db)

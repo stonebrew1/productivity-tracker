@@ -8,6 +8,7 @@ import type {
   FeedPost,
   GamificationDashboard,
   GroupInvitation,
+  GroupTask,
   LeaderboardEntry,
   Person,
   PostComment,
@@ -136,6 +137,24 @@ export const api = {
     request<void>(`/groups/invitations/${id}/decline`, { method: "POST" }),
   rotateGroupCode: (id: string) =>
     request<ProductivityGroup>(`/groups/${id}/invite-code`, { method: "POST" }),
+  groupTasks: (groupId: string) => request<GroupTask[]>(`/groups/${groupId}/tasks`),
+  createGroupTask: (groupId: string, payload: {
+    title: string;
+    description?: string | null;
+    priority: "low" | "medium" | "high";
+    deadline?: string | null;
+    assigned_to_id: string;
+  }) => request<GroupTask>(`/groups/${groupId}/tasks`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  }),
+  updateGroupTask: (taskId: string, payload: Partial<Pick<GroupTask, "title" | "description" | "priority" | "status" | "deadline" | "assigned_to_id">>) =>
+    request<GroupTask>(`/groups/tasks/${taskId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }),
+  deleteGroupTask: (taskId: string) =>
+    request<void>(`/groups/tasks/${taskId}`, { method: "DELETE" }),
   analytics: (dateFrom: string, dateTo: string, interval: AnalyticsInterval) => {
     const params = new URLSearchParams({
       date_from: dateFrom,

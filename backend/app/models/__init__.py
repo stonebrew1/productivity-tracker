@@ -1,6 +1,6 @@
 from app.models.achievement import Achievement
 from app.models.category import Category
-from app.models.group import GroupInvitation, GroupMember, ProductivityGroup
+from app.models.group import GroupInvitation, GroupMember, GroupTask, ProductivityGroup
 from app.models.refresh_token import RefreshToken
 from app.models.social import (
     ActivityPost,
@@ -25,6 +25,7 @@ __all__ = [
     "Category",
     "ProductivityGroup",
     "GroupMember",
+    "GroupTask",
     "GroupInvitation",
     "RefreshToken",
     "ActivityPost",

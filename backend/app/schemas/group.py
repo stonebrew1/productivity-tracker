@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.models.task import TaskPriority, TaskStatus
+
 
 class GroupCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
@@ -45,3 +47,37 @@ class GroupInvitationRead(BaseModel):
     inviter_name: str
     status: str
     created_at: datetime
+
+
+class GroupTaskCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=1000)
+    priority: TaskPriority = TaskPriority.MEDIUM
+    deadline: datetime | None = None
+    assigned_to_id: UUID
+
+
+class GroupTaskUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=1000)
+    priority: TaskPriority | None = None
+    status: TaskStatus | None = None
+    deadline: datetime | None = None
+    assigned_to_id: UUID | None = None
+
+
+class GroupTaskRead(BaseModel):
+    id: UUID
+    group_id: UUID
+    title: str
+    description: str | None
+    priority: TaskPriority
+    status: TaskStatus
+    deadline: datetime | None
+    created_at: datetime
+    completed_at: datetime | None
+    assigned_to_id: UUID
+    assignee_name: str
+    created_by_id: UUID
+    can_manage: bool
+    can_update_status: bool

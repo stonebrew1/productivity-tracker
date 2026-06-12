@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.models.task import TaskPriority, TaskStatus
 
 
 class ProductivityGroup(Base):
@@ -25,6 +26,7 @@ class ProductivityGroup(Base):
     leader = relationship("User")
     members = relationship("GroupMember", back_populates="group", cascade="all, delete-orphan")
     invitations = relationship("GroupInvitation", back_populates="group", cascade="all, delete-orphan")
+    tasks = relationship("GroupTask", back_populates="group", cascade="all, delete-orphan")
 
 
 class GroupMember(Base):
@@ -72,3 +74,31 @@ class GroupInvitation(Base):
     group = relationship("ProductivityGroup", back_populates="invitations")
     invited_user = relationship("User", foreign_keys=[invited_user_id])
     invited_by = relationship("User", foreign_keys=[invited_by_id])
+
+
+class GroupTask(Base):
+    __tablename__ = "group_tasks"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    title: Mapped[str] = mapped_column(String(200), index=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    priority: Mapped[TaskPriority] = mapped_column(Enum(TaskPriority), default=TaskPriority.MEDIUM)
+    status: Mapped[TaskStatus] = mapped_column(Enum(TaskStatus), default=TaskStatus.TODO)
+    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    group_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("productivity_groups.id", ondelete="CASCADE"), index=True
+    )
+    assigned_to_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    created_by_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+
+    group = relationship("ProductivityGroup", back_populates="tasks")
+    assigned_to = relationship("User", foreign_keys=[assigned_to_id])
+    created_by = relationship("User", foreign_keys=[created_by_id])

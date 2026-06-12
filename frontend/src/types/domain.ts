@@ -227,6 +227,23 @@ export type GroupInvitation = {
   created_at: string;
 };
 
+export type GroupTask = {
+  id: string;
+  group_id: string;
+  title: string;
+  description: string | null;
+  priority: TaskPriority;
+  status: TaskStatus;
+  deadline: string | null;
+  created_at: string;
+  completed_at: string | null;
+  assigned_to_id: string;
+  assignee_name: string;
+  created_by_id: string;
+  can_manage: boolean;
+  can_update_status: boolean;
+};
+
 export type AnalyticsInterval = "day" | "week" | "month";
 
 export type TrendPoint = {
