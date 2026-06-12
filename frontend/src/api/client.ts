@@ -22,7 +22,9 @@ import type {
   User
 } from "../types/domain";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
+const API_URL =
+  import.meta.env.VITE_API_URL ??
+  `${window.location.protocol}//${window.location.hostname}:8000/api`;
 const ACCESS_TOKEN_KEY = "productivity_access_token";
 const REFRESH_TOKEN_KEY = "productivity_refresh_token";
 

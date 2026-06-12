@@ -22,6 +22,10 @@ Then open:
 - API docs: http://localhost:8000/docs
 - Health check: http://localhost:8000/health
 
+To access the app from another device on the same local network, open
+`http://<computer-ip>:5173`. The frontend resolves its API through the same
+hostname on port `8000`, and the backend accepts private-network browser origins.
+
 ## Main API Areas
 
 - `POST /api/auth/register`
