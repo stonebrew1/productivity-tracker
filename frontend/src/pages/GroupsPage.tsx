@@ -8,11 +8,11 @@ import {
   useSensor,
   useSensors
 } from "@dnd-kit/core";
-import { Activity, AlertTriangle, Award, BarChart3, CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Clock3, Copy, Crown, Flag, Flame, Gauge, GripVertical, KeyRound, LoaderCircle, MessageCircle, Pencil, Plus, RefreshCw, Save, Send, Shield, Trash2, Trophy, UserPlus, UsersRound, X, Zap } from "lucide-react";
+import { Activity, AlertTriangle, Award, BarChart3, CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Clock3, Copy, Crown, Flag, Flame, Gauge, GripVertical, KeyRound, LoaderCircle, MessageCircle, Pencil, Plus, RefreshCw, Save, Send, Shield, Target, Trash2, Trophy, UserPlus, UsersRound, X, Zap } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { GroupActivity, GroupAnalytics, GroupInvitation, GroupMilestone, GroupProgress, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
+import type { GroupActivity, GroupAnalytics, GroupChallenge, GroupInvitation, GroupMilestone, GroupProgress, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
 
 const TASK_COLUMNS = [
   ["todo", "To do", Circle],
@@ -36,6 +36,12 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
   const [progress, setProgress] = useState<GroupProgress | null>(null);
   const [activity, setActivity] = useState<GroupActivity[]>([]);
   const [analytics, setAnalytics] = useState<GroupAnalytics | null>(null);
+  const [challenges, setChallenges] = useState<GroupChallenge[]>([]);
+  const [challengeTitle, setChallengeTitle] = useState("");
+  const [challengeDescription, setChallengeDescription] = useState("");
+  const [challengeTarget, setChallengeTarget] = useState("3");
+  const [challengeReward, setChallengeReward] = useState("75");
+  const [challengeDeadline, setChallengeDeadline] = useState("");
   const [updateDraft, setUpdateDraft] = useState("");
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [openActivityId, setOpenActivityId] = useState<string | null>(null);
@@ -80,15 +86,17 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       setProgress(null);
       setActivity([]);
       setAnalytics(null);
+      setChallenges([]);
       return;
     }
-    Promise.all([api.groupTasks(selectedId), api.groupMilestones(selectedId), api.groupProgress(selectedId), api.groupActivity(selectedId), api.groupAnalytics(selectedId)])
-      .then(([nextTasks, nextMilestones, nextProgress, nextActivity, nextAnalytics]) => {
+    Promise.all([api.groupTasks(selectedId), api.groupMilestones(selectedId), api.groupProgress(selectedId), api.groupActivity(selectedId), api.groupAnalytics(selectedId), api.groupChallenges(selectedId)])
+      .then(([nextTasks, nextMilestones, nextProgress, nextActivity, nextAnalytics, nextChallenges]) => {
         setTasks(nextTasks);
         setMilestones(nextMilestones);
         setProgress(nextProgress);
         setActivity(nextActivity);
         setAnalytics(nextAnalytics);
+        setChallenges(nextChallenges);
       })
       .catch((error) => onError(error instanceof Error ? error.message : "Unable to load group tasks"));
   }, [selectedId]);
@@ -131,18 +139,59 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
 
   async function refreshTasks(groupId = selectedId) {
     if (!groupId) return;
-    const [nextTasks, nextMilestones, nextProgress, nextActivity, nextAnalytics] = await Promise.all([
+    const [nextTasks, nextMilestones, nextProgress, nextActivity, nextAnalytics, nextChallenges] = await Promise.all([
       api.groupTasks(groupId),
       api.groupMilestones(groupId),
       api.groupProgress(groupId),
       api.groupActivity(groupId),
-      api.groupAnalytics(groupId)
+      api.groupAnalytics(groupId),
+      api.groupChallenges(groupId)
     ]);
     setTasks(nextTasks);
     setMilestones(nextMilestones);
     setProgress(nextProgress);
     setActivity(nextActivity);
     setAnalytics(nextAnalytics);
+    setChallenges(nextChallenges);
+  }
+
+  async function submitChallenge(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedId || !challengeDeadline) return;
+    setBusy(true);
+    onError(null);
+    try {
+      await api.createGroupChallenge(selectedId, {
+        title: challengeTitle,
+        description: challengeDescription || null,
+        target: Number(challengeTarget),
+        reward_xp: Number(challengeReward),
+        ends_at: new Date(`${challengeDeadline}T23:59:59`).toISOString()
+      });
+      setChallengeTitle("");
+      setChallengeDescription("");
+      setChallengeTarget("3");
+      setChallengeReward("75");
+      setChallengeDeadline("");
+      await refreshTasks(selectedId);
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to create team challenge");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeChallenge(challengeId: string) {
+    setBusy(true);
+    onError(null);
+    try {
+      await api.deleteGroupChallenge(challengeId);
+      await refreshTasks();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to delete team challenge");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function refreshActivity(groupId = selectedId) {
@@ -294,13 +343,18 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       const updated = await api.updateGroupTask(taskId, { status });
       setTasks((items) => items.map((task) => task.id === taskId ? updated : task));
       if (selectedId) {
-        const [nextMilestones, nextProgress] = await Promise.all([
+        const [nextMilestones, nextProgress, nextActivity, nextAnalytics, nextChallenges] = await Promise.all([
           api.groupMilestones(selectedId),
-          api.groupProgress(selectedId)
+          api.groupProgress(selectedId),
+          api.groupActivity(selectedId),
+          api.groupAnalytics(selectedId),
+          api.groupChallenges(selectedId)
         ]);
         setMilestones(nextMilestones);
         setProgress(nextProgress);
-        setActivity(await api.groupActivity(selectedId));
+        setActivity(nextActivity);
+        setAnalytics(nextAnalytics);
+        setChallenges(nextChallenges);
       }
     } catch (error) {
       setTasks(previousTasks);
@@ -446,6 +500,41 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                   </div>
                 </section>
               )}
+
+              <section className="group-challenges">
+                <div className="section-heading">
+                  <h2>Team challenges</h2>
+                  <span><Target size={13} />{challenges.filter((item) => item.completed).length} completed</span>
+                </div>
+                {selected.role === "leader" && (
+                  <form className="group-challenge-form" onSubmit={submitChallenge}>
+                    <input placeholder="Challenge title" value={challengeTitle} onChange={(event) => setChallengeTitle(event.target.value)} required />
+                    <input placeholder="What should the team achieve?" value={challengeDescription} onChange={(event) => setChallengeDescription(event.target.value)} />
+                    <label>Tasks<input min="1" max="100" type="number" value={challengeTarget} onChange={(event) => setChallengeTarget(event.target.value)} required /></label>
+                    <label>Reward XP<input min="10" max="500" step="5" type="number" value={challengeReward} onChange={(event) => setChallengeReward(event.target.value)} required /></label>
+                    <label>Deadline<input type="date" value={challengeDeadline} onChange={(event) => setChallengeDeadline(event.target.value)} required /></label>
+                    <button disabled={busy}><Plus size={15} />Start</button>
+                  </form>
+                )}
+                <div className="group-challenge-list">
+                  {challenges.map((challenge) => {
+                    const percent = Math.min(100, Math.round((challenge.progress / challenge.target) * 100));
+                    return (
+                      <article className={`${challenge.completed ? "complete" : ""} ${challenge.expired ? "expired" : ""}`} key={challenge.id}>
+                        <span className="group-challenge-icon">{challenge.completed ? <Trophy size={18} /> : <Target size={18} />}</span>
+                        <div>
+                          <header><strong>{challenge.title}</strong><b>+{challenge.reward_xp} XP</b></header>
+                          {challenge.description && <p>{challenge.description}</p>}
+                          <div className="group-challenge-progress"><i style={{ width: `${percent}%` }} /></div>
+                          <footer><span>{challenge.progress} / {challenge.target} completed tasks</span><time>{challenge.completed ? "Complete" : challenge.expired ? "Expired" : `Ends ${new Date(challenge.ends_at).toLocaleDateString()}`}</time></footer>
+                        </div>
+                        {challenge.can_manage && !challenge.completed && <button title="Delete challenge" onClick={() => removeChallenge(challenge.id)}><Trash2 size={14} /></button>}
+                      </article>
+                    );
+                  })}
+                  {challenges.length === 0 && <div className="group-task-empty"><Target size={18} /><span>No team challenge yet</span></div>}
+                </div>
+              </section>
 
               {analytics && <GroupInsights analytics={analytics} />}
 
@@ -801,6 +890,9 @@ function GroupTaskPreview({ task }: { task: GroupTask }) {
 }
 
 function activityIcon(kind: GroupActivity["kind"]) {
+  if (kind === "challenge_completed") return <Trophy size={15} />;
+  if (kind === "challenge_cancelled") return <X size={15} />;
+  if (kind === "challenge_created") return <Target size={15} />;
   if (kind === "task_completed" || kind === "milestone_reached") return <CheckCircle2 size={15} />;
   if (kind.startsWith("milestone")) return <Flag size={15} />;
   if (kind === "member_joined") return <UserPlus size={15} />;

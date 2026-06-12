@@ -304,11 +304,27 @@ export type GroupActivityComment = {
 
 export type GroupActivity = {
   id: string;
-  kind: "update" | "member_joined" | "task_created" | "task_status" | "task_assigned" | "task_completed" | "milestone_created" | "milestone_reached";
+  kind: "update" | "member_joined" | "task_created" | "task_status" | "task_assigned" | "task_completed" | "milestone_created" | "milestone_reached" | "challenge_created" | "challenge_completed" | "challenge_cancelled";
   content: string;
   created_at: string;
   author: GroupActivityAuthor;
   comments: GroupActivityComment[];
+};
+
+export type GroupChallenge = {
+  id: string;
+  group_id: string;
+  title: string;
+  description: string | null;
+  target: number;
+  progress: number;
+  reward_xp: number;
+  starts_at: string;
+  ends_at: string;
+  completed_at: string | null;
+  completed: boolean;
+  expired: boolean;
+  can_manage: boolean;
 };
 
 export type GroupAnalytics = {

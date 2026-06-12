@@ -30,6 +30,7 @@ class ProductivityGroup(Base):
     milestones = relationship("GroupMilestone", back_populates="group", cascade="all, delete-orphan")
     xp_awards = relationship("GroupXpAward", back_populates="group", cascade="all, delete-orphan")
     activities = relationship("GroupActivity", back_populates="group", cascade="all, delete-orphan")
+    challenges = relationship("GroupChallenge", back_populates="group", cascade="all, delete-orphan")
 
 
 class GroupMember(Base):
@@ -199,3 +200,28 @@ class GroupActivityComment(Base):
 
     activity = relationship("GroupActivity", back_populates="comments")
     user = relationship("User")
+
+
+class GroupChallenge(Base):
+    __tablename__ = "group_challenges"
+    __table_args__ = (Index("ix_group_challenges_group_ends", "group_id", "ends_at"),)
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    title: Mapped[str] = mapped_column(String(140))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    target: Mapped[int] = mapped_column(Integer)
+    reward_xp: Mapped[int] = mapped_column(Integer)
+    starts_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    group_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("productivity_groups.id", ondelete="CASCADE"), index=True
+    )
+    created_by_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+
+    group = relationship("ProductivityGroup", back_populates="challenges")
+    created_by = relationship("User")

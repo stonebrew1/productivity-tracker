@@ -200,3 +200,27 @@ class GroupAnalyticsRead(BaseModel):
     velocity: list[GroupVelocityPoint]
     workload: list[GroupWorkloadEntry]
     milestone_risks: list[GroupMilestoneRisk]
+
+
+class GroupChallengeCreate(BaseModel):
+    title: str = Field(min_length=2, max_length=140)
+    description: str | None = Field(default=None, max_length=500)
+    target: int = Field(ge=1, le=100)
+    reward_xp: int = Field(ge=10, le=500)
+    ends_at: datetime
+
+
+class GroupChallengeRead(BaseModel):
+    id: UUID
+    group_id: UUID
+    title: str
+    description: str | None
+    target: int
+    progress: int
+    reward_xp: int
+    starts_at: datetime
+    ends_at: datetime
+    completed_at: datetime | None
+    completed: bool
+    expired: bool
+    can_manage: bool

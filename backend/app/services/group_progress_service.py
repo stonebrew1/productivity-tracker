@@ -36,7 +36,7 @@ def contribution_streak(completed_dates: list[date], today: date | None = None) 
     return streak
 
 
-async def _add_award(
+async def add_group_xp_award(
     group_id: UUID,
     user_id: UUID,
     source_key: str,
@@ -67,7 +67,7 @@ async def _add_award(
 async def award_task_completion(task: GroupTask, db: AsyncSession) -> None:
     if task.status != TaskStatus.DONE:
         return
-    await _add_award(
+    await add_group_xp_award(
         task.group_id,
         task.assigned_to_id,
         f"group-task:{task.id}",
@@ -106,7 +106,7 @@ async def award_milestone_completion(milestone_id: UUID, db: AsyncSession) -> No
         )
     )
     for membership in memberships:
-        await _add_award(
+        await add_group_xp_award(
             milestone.group_id,
             membership.user_id,
             f"group-milestone:{milestone.id}:user:{membership.user_id}",
@@ -133,6 +133,9 @@ async def sync_group_rewards(group_id: UUID, db: AsyncSession) -> None:
     )
     for milestone_id in milestones:
         await award_milestone_completion(milestone_id, db)
+    from app.services.group_challenge_service import sync_group_challenges
+
+    await sync_group_challenges(group_id, db)
 
 
 async def group_progress(

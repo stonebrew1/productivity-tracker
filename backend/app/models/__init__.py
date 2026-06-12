@@ -3,6 +3,7 @@ from app.models.category import Category
 from app.models.group import (
     GroupActivity,
     GroupActivityComment,
+    GroupChallenge,
     GroupInvitation,
     GroupMember,
     GroupMilestone,
@@ -35,6 +36,7 @@ __all__ = [
     "ProductivityGroup",
     "GroupActivity",
     "GroupActivityComment",
+    "GroupChallenge",
     "GroupMember",
     "GroupMilestone",
     "GroupTask",

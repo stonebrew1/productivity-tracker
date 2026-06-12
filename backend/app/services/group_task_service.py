@@ -192,6 +192,10 @@ async def update_group_task(
             f"Assigned {task.title} to {assignee.display_name or assignee.email.split('@')[0]}",
             db,
         )
+    if task.status == TaskStatus.DONE and previous_status != TaskStatus.DONE:
+        from app.services.group_challenge_service import sync_group_challenges
+
+        await sync_group_challenges(task.group_id, db)
     await db.commit()
     await db.refresh(task)
     return await task_read(task, user.id, db)

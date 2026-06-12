@@ -10,6 +10,7 @@ import type {
   GroupActivity,
   GroupActivityComment,
   GroupAnalytics,
+  GroupChallenge,
   GroupInvitation,
   GroupMilestone,
   GroupProgress,
@@ -148,6 +149,14 @@ export const api = {
   groupProgress: (groupId: string) => request<GroupProgress>(`/groups/${groupId}/progress`),
   groupActivity: (groupId: string) => request<GroupActivity[]>(`/groups/${groupId}/activity`),
   groupAnalytics: (groupId: string) => request<GroupAnalytics>(`/groups/${groupId}/analytics`),
+  groupChallenges: (groupId: string) => request<GroupChallenge[]>(`/groups/${groupId}/challenges`),
+  createGroupChallenge: (groupId: string, payload: { title: string; description?: string | null; target: number; reward_xp: number; ends_at: string }) =>
+    request<GroupChallenge>(`/groups/${groupId}/challenges`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+  deleteGroupChallenge: (challengeId: string) =>
+    request<void>(`/groups/challenges/${challengeId}`, { method: "DELETE" }),
   createGroupUpdate: (groupId: string, content: string) =>
     request<GroupActivity>(`/groups/${groupId}/activity`, {
       method: "POST",

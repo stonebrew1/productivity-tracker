@@ -12,6 +12,8 @@ from app.schemas.group import (
     GroupActivityCommentRead,
     GroupActivityRead,
     GroupAnalyticsRead,
+    GroupChallengeCreate,
+    GroupChallengeRead,
     GroupInvitationRead,
     GroupInvite,
     GroupJoin,
@@ -53,6 +55,11 @@ from app.services.group_activity_service import (
     list_group_activity,
 )
 from app.services.group_analytics_service import group_analytics
+from app.services.group_challenge_service import (
+    create_group_challenge,
+    delete_group_challenge,
+    list_group_challenges,
+)
 
 
 router = APIRouter(prefix="/groups", tags=["groups"])
@@ -173,6 +180,34 @@ async def read_group_analytics(
     db: AsyncSession = Depends(get_db),
 ) -> GroupAnalyticsRead:
     return await group_analytics(group_id, current_user.id, db)
+
+
+@router.get("/{group_id}/challenges", response_model=list[GroupChallengeRead])
+async def read_group_challenges(
+    group_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[GroupChallengeRead]:
+    return await list_group_challenges(group_id, current_user.id, db)
+
+
+@router.post("/{group_id}/challenges", response_model=GroupChallengeRead, status_code=201)
+async def create_group_challenge_route(
+    group_id: UUID,
+    payload: GroupChallengeCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GroupChallengeRead:
+    return await create_group_challenge(group_id, payload, current_user, db)
+
+
+@router.delete("/challenges/{challenge_id}", status_code=204)
+async def delete_group_challenge_route(
+    challenge_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await delete_group_challenge(challenge_id, current_user.id, db)
 
 
 @router.post("/{group_id}/activity", response_model=GroupActivityRead, status_code=201)
