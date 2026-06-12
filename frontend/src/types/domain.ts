@@ -174,12 +174,27 @@ export type PostComment = {
 
 export type SocialNotification = {
   id: string;
-  kind: "follow" | "reaction" | "comment" | "challenge";
+  kind: "follow" | "reaction" | "comment" | "challenge" | "accountability";
   message: string;
   is_read: boolean;
   created_at: string;
   post_id: string | null;
   actor: FeedPost["author"];
+};
+
+export type AccountabilityCommitment = {
+  id: string;
+  task_id: string;
+  task_title: string;
+  task_status: TaskStatus;
+  status: "pending" | "accepted" | "declined" | "completed";
+  bonus_xp: number;
+  created_at: string;
+  responded_at: string | null;
+  completed_at: string | null;
+  owner: FeedPost["author"];
+  partner: FeedPost["author"];
+  role: "owner" | "partner";
 };
 
 export type AnalyticsInterval = "day" | "week" | "month";

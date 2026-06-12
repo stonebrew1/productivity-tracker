@@ -219,6 +219,13 @@ p { color: var(--muted); line-height: 1.6; }
 .priority-dot { width: 6px; height: 6px; border-radius: 50%; }
 .priority-dot.high { background: var(--danger); }.priority-dot.medium { background: var(--amber); }.priority-dot.low { background: var(--blue); }
 .xp-chip { flex: 0 0 auto; background: var(--violet-dim); color: #a78bfa; padding: 5px 8px; }
+.accountability-invite { display: grid; width: 145px; grid-template-columns: 1fr 34px; gap: 5px; }
+.accountability-invite select { min-width: 0; min-height: 34px; padding: 0 8px; font-size: .65rem; }
+.accountability-invite button { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid rgba(124,58,237,.35); border-radius: 7px; background: var(--violet-dim); color: #a78bfa; padding: 0; }
+.commitment-chip { display: flex; align-items: center; gap: 5px; border-radius: 6px; padding: 6px 8px; font-size: .62rem; font-weight: 700; text-transform: capitalize; }
+.commitment-chip.pending { background: rgba(245,158,11,.1); color: var(--amber); }
+.commitment-chip.accepted { background: rgba(16,185,129,.1); color: var(--emerald); }
+.commitment-chip.completed { background: var(--violet-dim); color: #a78bfa; }
 .empty-state { display: grid; justify-items: center; gap: 6px; }
 .empty-state strong { color: var(--text); }.empty-state p { margin: 0; font-size: .78rem; }
 
@@ -291,7 +298,19 @@ p { color: var(--muted); line-height: 1.6; }
 .comment-form input { min-height: 36px; font-size: .72rem; }
 .comment-form button { width: 36px; min-height: 36px; padding: 0; }
 .social-aside { display: grid; align-content: start; gap: 14px; }
-.profile-editor, .people-section, .leaderboard, .active-friends, .notifications-panel { border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); padding: 16px; }
+.profile-editor, .people-section, .leaderboard, .active-friends, .notifications-panel, .commitments-panel { border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); padding: 16px; }
+.commitments-panel .section-heading h2 { display: flex; align-items: center; gap: 6px; }
+.commitment-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 9px; border-top: 1px solid var(--border); padding: 10px 2px; }
+.commitment-row.accepted { border-left: 2px solid var(--emerald); padding-left: 8px; }
+.commitment-row .avatar { width: 32px; height: 32px; font-size: .68rem; }
+.commitment-row > div:nth-child(2) { display: flex; min-width: 0; flex-direction: column; }
+.commitment-row strong { overflow: hidden; font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.commitment-row span, .commitment-row small { color: var(--muted); font-size: .59rem; }
+.commitment-row small { color: #a78bfa; }
+.commitment-actions { display: flex; gap: 4px; }
+.commitment-actions button, .cancel-commitment { display: grid; width: 29px; height: 29px; place-items: center; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); }
+.commitment-actions button:first-child:hover { color: var(--emerald); }
+.commitment-actions button:last-child:hover, .cancel-commitment:hover { color: #f87171; }
 .notifications-panel .section-heading h2 { display: flex; align-items: center; gap: 6px; }
 .notifications-panel .section-heading h2 b { display: grid; min-width: 18px; height: 18px; place-items: center; border-radius: 9px; background: var(--violet); color: white; font-size: .58rem; }
 .notifications-panel .section-heading button { display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); }
@@ -452,6 +471,7 @@ p { color: var(--muted); line-height: 1.6; }
   .search-field, .form-row button, .analytics-filters button { grid-column: auto; }
   .check-filter { min-height: 38px; }
   .xp-chip { display: none; }
+  .accountability-invite { width: 120px; }
   .profile-strip { grid-template-columns: 44px 1fr; }.profile-strip > .avatar { width: 44px; height: 44px; }.streak-stat { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 6px; text-align: left; }
   .feed-post { grid-template-columns: 34px 1fr; padding: 13px; }.feed-post > .avatar { width: 34px; height: 34px; }.feed-actions { grid-column: 2; justify-self: start; }.post-comments { grid-column: 1 / -1; }
   .social-quest { grid-template-columns: 34px 1fr; }.social-quest-progress { grid-column: 2; grid-template-columns: auto 1fr auto; align-items: center; text-align: left; }

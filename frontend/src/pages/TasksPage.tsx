@@ -1,8 +1,8 @@
-import { Check, ChevronDown, Globe2, Lock, Plus, Search, Trash2, X } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { Check, ChevronDown, Globe2, Handshake, Lock, Plus, Search, Trash2, X } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { api } from "../api/client";
-import type { Category, Task, TaskPriority } from "../types/domain";
+import type { AccountabilityCommitment, Category, Person, Task, TaskPriority } from "../types/domain";
 
 type Props = {
   tasks: Task[];
@@ -23,6 +23,21 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [newCategory, setNewCategory] = useState("");
   const [busy, setBusy] = useState(false);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [commitments, setCommitments] = useState<AccountabilityCommitment[]>([]);
+  const [partnerByTask, setPartnerByTask] = useState<Record<string, string>>({});
+
+  async function loadAccountability() {
+    const [nextPeople, nextCommitments] = await Promise.all([api.people(), api.commitments()]);
+    setPeople(nextPeople.filter((person) => person.is_following));
+    setCommitments(nextCommitments);
+  }
+
+  useEffect(() => {
+    loadAccountability().catch((error) =>
+      onError(error instanceof Error ? error.message : "Unable to load accountability partners")
+    );
+  }, []);
 
   const filtered = useMemo(() => tasks.filter((task) => {
     const text = `${task.title} ${task.description ?? ""}`.toLowerCase();
@@ -69,7 +84,7 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
   async function mutate(action: () => Promise<unknown>) {
     try {
       await action();
-      await onChanged();
+      await Promise.all([onChanged(), loadAccountability()]);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Unable to update task");
     }
@@ -121,6 +136,7 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
         <div className="section-heading"><h2>All tasks</h2><span>{filtered.length} shown</span></div>
         {filtered.map((task) => {
           const category = categories.find((item) => item.id === task.category_id);
+          const commitment = commitments.find((item) => item.task_id === task.id && item.status !== "declined");
           return (
             <article className={`task-item ${task.status}`} key={task.id}>
               <button className="complete-control" title="Complete task" disabled={task.status === "done"} onClick={() => mutate(() => api.completeTask(task.id))}><Check size={15} /></button>
@@ -134,6 +150,27 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
                 </div>
               </div>
               <span className="xp-chip">+20 XP</span>
+              {commitment ? (
+                <span className={`commitment-chip ${commitment.status}`} title={`Accountability with ${commitment.partner.display_name || commitment.partner.email}`}>
+                  <Handshake size={14} />{commitment.status}
+                </span>
+              ) : task.visibility === "public" && task.status !== "done" && people.length > 0 ? (
+                <div className="accountability-invite">
+                  <select
+                    aria-label={`Accountability partner for ${task.title}`}
+                    value={partnerByTask[task.id] ?? ""}
+                    onChange={(event) => setPartnerByTask((value) => ({ ...value, [task.id]: event.target.value }))}
+                  >
+                    <option value="">Partner</option>
+                    {people.map((person) => <option value={person.id} key={person.id}>{person.display_name || person.email.split("@")[0]}</option>)}
+                  </select>
+                  <button
+                    title="Invite accountability partner"
+                    disabled={!partnerByTask[task.id]}
+                    onClick={() => mutate(() => api.inviteAccountability(task.id, partnerByTask[task.id]))}
+                  ><Handshake size={15} /></button>
+                </div>
+              ) : null}
               <button className="icon-button danger-button" title="Delete task" onClick={() => mutate(() => api.deleteTask(task.id))}><Trash2 size={16} /></button>
             </article>
           );

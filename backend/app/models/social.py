@@ -195,3 +195,34 @@ class ChallengeMember(Base):
 
     challenge = relationship("Challenge", back_populates="members")
     user = relationship("User")
+
+
+class AccountabilityCommitment(Base):
+    __tablename__ = "accountability_commitments"
+    __table_args__ = (
+        UniqueConstraint("task_id", name="uq_accountability_commitment_task"),
+        CheckConstraint("owner_id <> partner_id", name="ck_accountability_not_self"),
+        Index("ix_accountability_partner_status", "partner_id", "status"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    status: Mapped[str] = mapped_column(String(20), default="pending", server_default="pending")
+    bonus_xp: Mapped[int] = mapped_column(Integer, default=15, server_default="15")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    task_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="CASCADE"), index=True
+    )
+    owner_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    partner_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+
+    task = relationship("Task")
+    owner = relationship("User", foreign_keys=[owner_id])
+    partner = relationship("User", foreign_keys=[partner_id])

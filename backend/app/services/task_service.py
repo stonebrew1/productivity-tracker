@@ -6,12 +6,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.category import Category
-from app.models.task import Task, TaskStatus
-from app.models.social import ActivityPost
+from app.models.task import Task, TaskStatus, TaskVisibility
+from app.models.social import AccountabilityCommitment, ActivityPost
 from app.models.task_event import TaskEventType
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services.achievement_service import check_and_award
+from app.services.accountability_service import award_accountability_bonus
 from app.services.challenge_service import award_challenge_rewards
 from app.services.gamification_service import award_quest_rewards, award_task_completion, sync_activity_post
 from app.services.stats_service import recalculate_stats
@@ -66,6 +67,18 @@ async def update_task(task_id: UUID, payload: TaskUpdate, current_user: User, db
     if not task or task.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
     await validate_task_links(payload, current_user, db)
+    if payload.visibility == TaskVisibility.PRIVATE:
+        active_commitment = await db.scalar(
+            select(AccountabilityCommitment.id).where(
+                AccountabilityCommitment.task_id == task.id,
+                AccountabilityCommitment.status.in_(["pending", "accepted"]),
+            )
+        )
+        if active_commitment:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cancel the accountability commitment before making this task private.",
+            )
 
     before = task_snapshot(task, TRACKED_TASK_FIELDS)
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -84,6 +97,7 @@ async def update_task(task_id: UUID, payload: TaskUpdate, current_user: User, db
             await check_and_award(current_user.id, task, db)
             await award_quest_rewards(current_user.id, db)
             await award_challenge_rewards(task, db)
+            await award_accountability_bonus(task, db)
         elif "status" in changes:
             event_type = TaskEventType.STATUS_CHANGED
         else:
@@ -119,6 +133,7 @@ async def complete_task(task_id: UUID, current_user: User, db: AsyncSession) -> 
     achievements = await check_and_award(current_user.id, task, db)
     await award_quest_rewards(current_user.id, db)
     await award_challenge_rewards(task, db)
+    await award_accountability_bonus(task, db)
     await db.commit()
     await db.refresh(task)
     for achievement in achievements:

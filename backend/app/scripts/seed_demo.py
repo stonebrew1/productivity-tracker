@@ -10,6 +10,7 @@ from app.models.achievement import Achievement
 from app.models.category import Category
 from app.models.social import (
     ActivityPost,
+    AccountabilityCommitment,
     Challenge,
     ChallengeMember,
     Follow,
@@ -117,6 +118,14 @@ async def seed_demo() -> None:
 
         seeded_users = [user, *peers]
         seeded_user_ids = [item.id for item in seeded_users]
+        await db.execute(
+            delete(AccountabilityCommitment).where(
+                or_(
+                    AccountabilityCommitment.owner_id.in_(seeded_user_ids),
+                    AccountabilityCommitment.partner_id.in_(seeded_user_ids),
+                )
+            )
+        )
         await db.execute(delete(ChallengeMember).where(ChallengeMember.user_id.in_(seeded_user_ids)))
         await db.execute(delete(Challenge))
         await db.execute(
@@ -237,6 +246,7 @@ async def seed_demo() -> None:
                 )
             )
 
+        open_tasks_created: list[Task] = []
         for index, (
             title,
             category_name,
@@ -260,11 +270,13 @@ async def seed_demo() -> None:
                 scheduled_for=scheduled_for,
                 estimated_minutes=estimated_minutes,
                 is_focus=is_focus,
+                visibility=TaskVisibility.PUBLIC if index == 0 else TaskVisibility.PRIVATE,
                 user_id=user.id,
                 category_id=category.id,
             )
             db.add(task)
             await db.flush()
+            open_tasks_created.append(task)
             db.add(
                 TaskEvent(
                     event_type=TaskEventType.CREATED,
@@ -522,12 +534,23 @@ async def seed_demo() -> None:
                 for peer in peers
             ]
         )
+        db.add(
+            AccountabilityCommitment(
+                task_id=open_tasks_created[0].id,
+                owner_id=user.id,
+                partner_id=peers[0].id,
+                status="accepted",
+                responded_at=now - timedelta(hours=3),
+                created_at=now - timedelta(hours=5),
+            )
+        )
         await db.commit()
 
     print(
         f"Seeded {DEMO_EMAIL}: {len(TASK_BLUEPRINTS)} completed tasks, "
         f"{len(OPEN_TASKS)} active tasks, 3 deleted-task histories, gamification progress, "
-        f"{len(SOCIAL_USERS)} social demo users, and 2 collaborative challenges."
+        f"{len(SOCIAL_USERS)} social demo users, 2 collaborative challenges, "
+        "and 1 accepted accountability commitment."
     )
 
 

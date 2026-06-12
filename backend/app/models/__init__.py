@@ -3,6 +3,7 @@ from app.models.category import Category
 from app.models.refresh_token import RefreshToken
 from app.models.social import (
     ActivityPost,
+    AccountabilityCommitment,
     Challenge,
     ChallengeMember,
     Follow,
@@ -23,6 +24,7 @@ __all__ = [
     "Category",
     "RefreshToken",
     "ActivityPost",
+    "AccountabilityCommitment",
     "Challenge",
     "ChallengeMember",
     "Follow",

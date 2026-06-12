@@ -24,6 +24,8 @@ from app.schemas.social import (
     CommentCreate,
     CommentRead,
     ChallengeRead,
+    CommitmentInvite,
+    CommitmentRead,
     FeedAuthor,
     FeedPostRead,
     LeaderboardEntryRead,
@@ -34,6 +36,12 @@ from app.schemas.social import (
 from app.schemas.user import ProfileUpdate
 from app.services.gamification_service import award_quest_rewards, gamification_snapshot, level_from_xp
 from app.services.challenge_service import challenge_snapshot, list_challenges
+from app.services.accountability_service import (
+    cancel_commitment,
+    invite_partner,
+    list_commitments,
+    respond_to_commitment,
+)
 from app.services.stats_service import ensure_stats
 
 
@@ -204,6 +212,51 @@ async def leave_challenge(
     if membership:
         await db.delete(membership)
         await db.commit()
+
+
+@router.get("/commitments", response_model=list[CommitmentRead])
+async def read_commitments(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[CommitmentRead]:
+    return await list_commitments(current_user.id, db)
+
+
+@router.post("/tasks/{task_id}/accountability", response_model=CommitmentRead, status_code=201)
+async def create_commitment(
+    task_id: UUID,
+    payload: CommitmentInvite,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CommitmentRead:
+    return await invite_partner(task_id, payload.partner_id, current_user, db)
+
+
+@router.post("/commitments/{commitment_id}/accept", response_model=CommitmentRead)
+async def accept_commitment(
+    commitment_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CommitmentRead:
+    return await respond_to_commitment(commitment_id, current_user.id, True, db)
+
+
+@router.post("/commitments/{commitment_id}/decline", response_model=CommitmentRead)
+async def decline_commitment(
+    commitment_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CommitmentRead:
+    return await respond_to_commitment(commitment_id, current_user.id, False, db)
+
+
+@router.delete("/commitments/{commitment_id}", status_code=204)
+async def delete_commitment(
+    commitment_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await cancel_commitment(commitment_id, current_user.id, db)
 
 
 @router.post("/people/{user_id}/follow", status_code=204)

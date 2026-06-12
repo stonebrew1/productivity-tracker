@@ -1,5 +1,6 @@
 import type {
   Achievement,
+  AccountabilityCommitment,
   AnalyticsInterval,
   AnalyticsReport,
   Category,
@@ -102,6 +103,17 @@ export const api = {
   unreact: (id: string) => request<void>(`/social/posts/${id}/reaction`, { method: "DELETE" }),
   notifications: () => request<SocialNotification[]>("/social/notifications"),
   markNotificationsRead: () => request<void>("/social/notifications/read", { method: "POST" }),
+  commitments: () => request<AccountabilityCommitment[]>("/social/commitments"),
+  inviteAccountability: (taskId: string, partnerId: string) =>
+    request<AccountabilityCommitment>(`/social/tasks/${taskId}/accountability`, {
+      method: "POST",
+      body: JSON.stringify({ partner_id: partnerId })
+    }),
+  acceptCommitment: (id: string) =>
+    request<AccountabilityCommitment>(`/social/commitments/${id}/accept`, { method: "POST" }),
+  declineCommitment: (id: string) =>
+    request<AccountabilityCommitment>(`/social/commitments/${id}/decline`, { method: "POST" }),
+  cancelCommitment: (id: string) => request<void>(`/social/commitments/${id}`, { method: "DELETE" }),
   analytics: (dateFrom: string, dateTo: string, interval: AnalyticsInterval) => {
     const params = new URLSearchParams({
       date_from: dateFrom,

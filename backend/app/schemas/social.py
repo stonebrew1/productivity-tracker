@@ -100,3 +100,22 @@ class ChallengeRead(BaseModel):
     joined: bool
     completed: bool
     rewarded: bool
+
+
+class CommitmentInvite(BaseModel):
+    partner_id: UUID
+
+
+class CommitmentRead(BaseModel):
+    id: UUID
+    task_id: UUID
+    task_title: str
+    task_status: str
+    status: str
+    bonus_xp: int
+    created_at: datetime
+    responded_at: datetime | None
+    completed_at: datetime | None
+    owner: FeedAuthor
+    partner: FeedAuthor
+    role: str

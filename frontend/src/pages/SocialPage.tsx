@@ -1,8 +1,8 @@
-import { Bell, Check, CheckCircle2, Crown, Flag, Flame, Heart, Medal, MessageCircle, Send, Sparkles, Trash2, UserMinus, UserPlus, UsersRound, Zap } from "lucide-react";
+import { Bell, Check, CheckCircle2, Crown, Flag, Flame, Handshake, Heart, Medal, MessageCircle, Send, Sparkles, Trash2, UserMinus, UserPlus, UsersRound, X, Zap } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { FeedPost, GamificationDashboard, LeaderboardEntry, Person, PostComment, Profile, SocialNotification } from "../types/domain";
+import type { AccountabilityCommitment, FeedPost, GamificationDashboard, LeaderboardEntry, Person, PostComment, Profile, SocialNotification } from "../types/domain";
 
 type Props = {
   onError: (message: string | null) => void;
@@ -15,6 +15,7 @@ export function SocialPage({ onError }: Props) {
   const [game, setGame] = useState<GamificationDashboard | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [notifications, setNotifications] = useState<SocialNotification[]>([]);
+  const [commitments, setCommitments] = useState<AccountabilityCommitment[]>([]);
   const [openComments, setOpenComments] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, PostComment[]>>({});
   const [commentDraft, setCommentDraft] = useState("");
@@ -22,13 +23,14 @@ export function SocialPage({ onError }: Props) {
   const [loading, setLoading] = useState(true);
 
   async function loadSocial() {
-    const [nextProfile, nextPeople, nextFeed, nextGame, nextLeaderboard, nextNotifications] = await Promise.all([
+    const [nextProfile, nextPeople, nextFeed, nextGame, nextLeaderboard, nextNotifications, nextCommitments] = await Promise.all([
       api.profile(),
       api.people(),
       api.feed(),
       api.gamification(),
       api.leaderboard(),
-      api.notifications()
+      api.notifications(),
+      api.commitments()
     ]);
     setProfile(nextProfile);
     setPeople(nextPeople);
@@ -36,6 +38,7 @@ export function SocialPage({ onError }: Props) {
     setGame(nextGame);
     setLeaderboard(nextLeaderboard);
     setNotifications(nextNotifications);
+    setCommitments(nextCommitments);
   }
 
   useEffect(() => {
@@ -234,6 +237,7 @@ export function SocialPage({ onError }: Props) {
         </main>
 
         <aside className="social-aside">
+          <Commitments commitments={commitments} onMutate={mutate} />
           <Notifications
             notifications={notifications}
             onRead={() => mutate(() => api.markNotificationsRead())}
@@ -273,6 +277,43 @@ export function SocialPage({ onError }: Props) {
           </section>
         </aside>
       </div>
+    </section>
+  );
+}
+
+function Commitments({
+  commitments,
+  onMutate
+}: {
+  commitments: AccountabilityCommitment[];
+  onMutate: (action: () => Promise<unknown>) => Promise<void>;
+}) {
+  const visible = commitments.filter((item) => item.status === "pending" || item.status === "accepted");
+  return (
+    <section className="commitments-panel">
+      <div className="section-heading"><h2><Handshake size={15} /> Accountability</h2><span>{visible.length} active</span></div>
+      {visible.map((item) => {
+        const other = item.role === "owner" ? item.partner : item.owner;
+        return (
+          <div className={`commitment-row ${item.status}`} key={item.id}>
+            <Avatar name={other.display_name ?? other.email} />
+            <div>
+              <strong>{item.task_title}</strong>
+              <span>{item.role === "owner" ? `Waiting on ${other.display_name || other.email.split("@")[0]}` : `${item.owner.display_name || item.owner.email.split("@")[0]} invited you`}</span>
+              <small>Both earn +{item.bonus_xp} XP</small>
+            </div>
+            {item.status === "pending" && item.role === "partner" ? (
+              <div className="commitment-actions">
+                <button title="Accept" onClick={() => onMutate(() => api.acceptCommitment(item.id))}><Check size={14} /></button>
+                <button title="Decline" onClick={() => onMutate(() => api.declineCommitment(item.id))}><X size={14} /></button>
+              </div>
+            ) : (
+              <button className="cancel-commitment" title="Cancel commitment" onClick={() => onMutate(() => api.cancelCommitment(item.id))}><X size={14} /></button>
+            )}
+          </div>
+        );
+      })}
+      {visible.length === 0 && <p className="muted compact-copy">Invite a connection from a public task.</p>}
     </section>
   );
 }

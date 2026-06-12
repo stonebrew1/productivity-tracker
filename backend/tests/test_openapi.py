@@ -12,4 +12,6 @@ def test_openapi_schema_includes_analytics_route() -> None:
     assert "/api/social/notifications" in schema["paths"]
     assert "/api/social/challenges" in schema["paths"]
     assert "/api/social/challenges/{challenge_id}/join" in schema["paths"]
+    assert "/api/social/commitments" in schema["paths"]
+    assert "/api/social/tasks/{task_id}/accountability" in schema["paths"]
     assert "/api/gamification" in schema["paths"]
