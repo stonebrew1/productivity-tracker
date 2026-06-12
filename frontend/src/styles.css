@@ -193,6 +193,13 @@ p { color: var(--muted); line-height: 1.6; }
 .tasks-page { max-width: 850px; margin: 0 auto; }
 .task-composer { margin-bottom: 18px; }
 .task-form { display: grid; gap: 10px; }
+.visibility-field { display: grid; grid-template-columns: auto minmax(230px, 340px) 1fr; align-items: center; gap: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); padding: 9px 12px; }
+.visibility-field > span { color: #b6b6c9; font-size: .72rem; font-weight: 600; }
+.visibility-field > small { color: var(--muted); font-size: .65rem; line-height: 1.4; }
+.visibility-segment { display: grid; grid-template-columns: repeat(2, 1fr); border: 1px solid var(--border); border-radius: 7px; background: var(--bg); padding: 3px; }
+.visibility-segment button { display: flex; min-height: 32px; align-items: center; justify-content: center; gap: 6px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); padding: 0 10px; font-size: .69rem; font-weight: 700; }
+.visibility-segment button.active { background: var(--surface-3); color: var(--text); }
+.visibility-segment button.active.public { background: var(--violet-dim); color: #a78bfa; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; }
 .category-form { display: grid; grid-template-columns: 1fr 42px; gap: 8px; max-width: 330px; margin-top: 10px; }
 .category-form button { width: 42px; padding: 0; }
@@ -206,6 +213,9 @@ p { color: var(--muted); line-height: 1.6; }
 .task-item.done h3 { text-decoration: line-through; }
 .task-meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); font-size: .68rem; text-transform: capitalize; }
 .category-chip { background: var(--violet-dim); color: #a78bfa; padding: 3px 7px; }
+.visibility-chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 5px; padding: 3px 7px; font-weight: 700; }
+.visibility-chip.private { background: rgba(116,116,143,.12); color: #9292aa; }
+.visibility-chip.public { background: rgba(59,130,246,.12); color: #60a5fa; }
 .priority-dot { width: 6px; height: 6px; border-radius: 50%; }
 .priority-dot.high { background: var(--danger); }.priority-dot.medium { background: var(--amber); }.priority-dot.low { background: var(--blue); }
 .xp-chip { flex: 0 0 auto; background: var(--violet-dim); color: #a78bfa; padding: 5px 8px; }
@@ -416,6 +426,7 @@ p { color: var(--muted); line-height: 1.6; }
   .today-summary { grid-template-columns: repeat(2, 1fr); }
   .task-toolbar { grid-template-columns: 1fr 1fr; }.search-field { grid-column: 1 / -1; }
   .form-row, .analytics-filters { grid-template-columns: 1fr 1fr; }
+  .visibility-field { grid-template-columns: auto 1fr; }.visibility-field > small { grid-column: 1 / -1; }
   .form-row button, .analytics-filters button { grid-column: 1 / -1; }
   .game-progress { grid-template-columns: auto 1fr; }.game-streak { grid-column: 1 / -1; grid-auto-flow: column; justify-content: start; gap: 8px; }
   .quest-grid, .badge-catalog, .challenge-grid, .two-column { grid-template-columns: 1fr; }
@@ -437,6 +448,7 @@ p { color: var(--muted); line-height: 1.6; }
   .priority-mark { display: none; }
   .today-task-actions { flex-direction: column; }
   .task-toolbar, .form-row, .analytics-filters { grid-template-columns: 1fr; }
+  .visibility-field { grid-template-columns: 1fr; }.visibility-field > small { grid-column: auto; }
   .search-field, .form-row button, .analytics-filters button { grid-column: auto; }
   .check-filter { min-height: 38px; }
   .xp-chip { display: none; }

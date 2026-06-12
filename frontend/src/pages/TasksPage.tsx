@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Plus, Search, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, Globe2, Lock, Plus, Search, Trash2, X } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 
 import { api } from "../api/client";
@@ -20,6 +20,7 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [categoryId, setCategoryId] = useState("");
+  const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [newCategory, setNewCategory] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -35,7 +36,13 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
     setBusy(true);
     onError(null);
     try {
-      await api.createTask({ title, description, priority, category_id: categoryId || null });
+      await api.createTask({
+        title,
+        description,
+        priority,
+        visibility,
+        category_id: categoryId || null
+      });
       setTitle("");
       setDescription("");
       setComposerOpen(false);
@@ -81,6 +88,14 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
           <form className="task-form" onSubmit={submitTask}>
             <input placeholder="What needs to be done?" value={title} onChange={(event) => setTitle(event.target.value)} required />
             <textarea placeholder="Add context or a useful definition of done" value={description} onChange={(event) => setDescription(event.target.value)} />
+            <div className="visibility-field">
+              <span>Visibility</span>
+              <div className="visibility-segment" role="group" aria-label="Task visibility">
+                <button className={visibility === "private" ? "active" : ""} type="button" onClick={() => setVisibility("private")}><Lock size={15} />Private</button>
+                <button className={visibility === "public" ? "active public" : ""} type="button" onClick={() => setVisibility("public")}><Globe2 size={15} />Public</button>
+              </div>
+              <small>{visibility === "public" ? "Appears in Social and contributes to joined challenges." : "Visible only to you."}</small>
+            </div>
             <div className="form-row">
               <select value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)}>
                 <option value="low">Low priority</option><option value="medium">Medium priority</option><option value="high">High priority</option>
@@ -112,7 +127,11 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
               <div className="task-item-copy">
                 <h3>{task.title}</h3>
                 {task.description && <p>{task.description}</p>}
-                <div className="task-meta">{category && <span className="category-chip">{category.name}</span>}<span className={`priority-dot ${task.priority}`} />{task.status.replace("_", " ")}</div>
+                <div className="task-meta">
+                  {category && <span className="category-chip">{category.name}</span>}
+                  <span className={`visibility-chip ${task.visibility}`}>{task.visibility === "public" ? <Globe2 size={11} /> : <Lock size={11} />}{task.visibility}</span>
+                  <span className={`priority-dot ${task.priority}`} />{task.status.replace("_", " ")}
+                </div>
               </div>
               <span className="xp-chip">+20 XP</span>
               <button className="icon-button danger-button" title="Delete task" onClick={() => mutate(() => api.deleteTask(task.id))}><Trash2 size={16} /></button>
