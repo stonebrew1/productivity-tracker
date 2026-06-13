@@ -1,6 +1,15 @@
+from uuid import uuid4
+
 import pytest
 
-from app.core.security import hash_password, verify_password
+from app.core.security import (
+    create_access_token,
+    create_refresh_token,
+    decode_access_token,
+    hash_password,
+    hash_refresh_token,
+    verify_password,
+)
 
 
 def test_password_hash_round_trip() -> None:
@@ -13,4 +22,25 @@ def test_password_hash_round_trip() -> None:
 
 def test_password_hash_rejects_more_than_72_bytes() -> None:
     with pytest.raises(ValueError, match="72 bytes"):
-        hash_password("і" * 37)
+        hash_password("a" * 73)
+
+
+def test_access_token_has_expected_identity_and_type() -> None:
+    user_id = uuid4()
+    session_id = uuid4()
+    payload = decode_access_token(create_access_token(user_id, "user", session_id))
+
+    assert payload["sub"] == str(user_id)
+    assert payload["sid"] == str(session_id)
+    assert payload["role"] == "user"
+    assert payload["type"] == "access"
+    assert payload["jti"]
+
+
+def test_refresh_tokens_are_random_and_stored_as_digests() -> None:
+    first = create_refresh_token()
+    second = create_refresh_token()
+
+    assert first != second
+    assert hash_refresh_token(first) != first
+    assert hash_refresh_token(first) == hash_refresh_token(first)

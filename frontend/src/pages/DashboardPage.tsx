@@ -212,7 +212,7 @@ function QuickAdd({
           <input type="checkbox" checked={isFocus} onChange={(event) => setIsFocus(event.target.checked)} />
           <Star size={16} />
         </label>
-        <label className="visibility-toggle" title={visibility === "public" ? "Shared with followers" : "Private task"}>
+        <label className="visibility-toggle" title={visibility === "public" ? "Shared with friends" : "Private task"}>
           <input
             type="checkbox"
             checked={visibility === "public"}

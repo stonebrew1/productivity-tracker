@@ -227,3 +227,16 @@ class GroupChallengeRead(BaseModel):
     completed: bool
     expired: bool
     can_manage: bool
+
+
+class GroupAchievementRead(BaseModel):
+    code: str
+    title: str
+    description: str
+    rarity: str
+    icon: str
+    reward_xp: int
+    progress: int
+    target: int
+    unlocked: bool
+    unlocked_at: datetime | None

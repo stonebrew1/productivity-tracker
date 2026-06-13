@@ -5,13 +5,14 @@ from fastapi import HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.social import AccountabilityCommitment, Follow, Notification, XpAward
+from app.models.social import AccountabilityCommitment, Notification, XpAward
 from app.models.task import Task, TaskStatus, TaskVisibility
 from app.models.user import User
 from app.models.user_stats import UserStats
 from app.schemas.social import CommitmentRead, FeedAuthor
 from app.services.gamification_service import level_from_xp
 from app.services.stats_service import ensure_stats
+from app.services.friendship_service import are_friends
 
 
 async def list_commitments(user_id: UUID, db: AsyncSession) -> list[CommitmentRead]:
@@ -69,14 +70,8 @@ async def invite_partner(
     if partner_id == current_user.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Choose another person.")
     partner = await db.get(User, partner_id)
-    follows = await db.scalar(
-        select(Follow.id).where(
-            Follow.follower_id == current_user.id,
-            Follow.followed_id == partner_id,
-        )
-    )
-    if not partner or not follows:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Follow this person first.")
+    if not partner or not await are_friends(current_user.id, partner_id, db):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Add this person as a friend first.")
     if await db.scalar(select(AccountabilityCommitment.id).where(AccountabilityCommitment.task_id == task.id)):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This task already has a partner.")
     commitment = AccountabilityCommitment(

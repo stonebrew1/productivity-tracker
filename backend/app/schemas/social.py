@@ -29,7 +29,8 @@ class PersonRead(BaseModel):
     level: int
     current_streak: int
     last_active_at: datetime | None
-    is_following: bool
+    relationship_status: str
+    relationship_id: UUID | None
 
 
 class FeedAuthor(BaseModel):
@@ -82,6 +83,8 @@ class NotificationRead(BaseModel):
     is_read: bool
     created_at: datetime
     post_id: UUID | None
+    friendship_id: UUID | None
+    friendship_status: str | None
     actor: FeedAuthor
 
 

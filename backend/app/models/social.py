@@ -8,23 +8,25 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 
-class Follow(Base):
-    __tablename__ = "follows"
+class Friendship(Base):
+    __tablename__ = "friendships"
     __table_args__ = (
-        UniqueConstraint("follower_id", "followed_id", name="uq_follows_pair"),
-        CheckConstraint("follower_id <> followed_id", name="ck_follows_not_self"),
+        UniqueConstraint("requester_id", "addressee_id", name="uq_friendships_pair"),
+        CheckConstraint("requester_id <> addressee_id", name="ck_friendships_not_self"),
     )
 
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
-    follower_id: Mapped[UUID] = mapped_column(
+    requester_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
-    followed_id: Mapped[UUID] = mapped_column(
+    addressee_id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
+    status: Mapped[str] = mapped_column(String(20), default="pending", server_default="pending")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class XpAward(Base):
@@ -157,6 +159,9 @@ class Notification(Base):
     )
     post_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True), ForeignKey("activity_posts.id", ondelete="CASCADE"), nullable=True
+    )
+    friendship_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("friendships.id", ondelete="CASCADE"), nullable=True
     )
 
     actor = relationship("User", foreign_keys=[actor_id])

@@ -31,6 +31,7 @@ class ProductivityGroup(Base):
     xp_awards = relationship("GroupXpAward", back_populates="group", cascade="all, delete-orphan")
     activities = relationship("GroupActivity", back_populates="group", cascade="all, delete-orphan")
     challenges = relationship("GroupChallenge", back_populates="group", cascade="all, delete-orphan")
+    achievements = relationship("GroupAchievement", back_populates="group", cascade="all, delete-orphan")
 
 
 class GroupMember(Base):
@@ -247,3 +248,27 @@ class GroupChallenge(Base):
 
     group = relationship("ProductivityGroup", back_populates="challenges")
     created_by = relationship("User")
+
+
+class GroupAchievement(Base):
+    __tablename__ = "group_achievements"
+    __table_args__ = (
+        UniqueConstraint("group_id", "code", name="uq_group_achievements_code"),
+        Index("ix_group_achievements_group_unlocked", "group_id", "unlocked_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    code: Mapped[str] = mapped_column(String(80))
+    title: Mapped[str] = mapped_column(String(140))
+    description: Mapped[str] = mapped_column(String(300))
+    rarity: Mapped[str] = mapped_column(String(20))
+    icon: Mapped[str] = mapped_column(String(40))
+    reward_xp: Mapped[int] = mapped_column(Integer)
+    unlocked_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    group_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True), ForeignKey("productivity_groups.id", ondelete="CASCADE"), index=True
+    )
+
+    group = relationship("ProductivityGroup", back_populates="achievements")

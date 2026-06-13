@@ -9,6 +9,7 @@ import type {
   GamificationDashboard,
   GroupActivity,
   GroupActivityComment,
+  GroupAchievement,
   GroupAnalytics,
   GroupChallenge,
   GroupInvitation,
@@ -20,40 +21,96 @@ import type {
   PostComment,
   Profile,
   ProductivityGroup,
+  RegistrationResponse,
   SocialNotification,
   Stats,
   Task,
   TokenResponse,
-  User
+  User,
+  VerificationSessionResponse
 } from "../types/domain";
 
 const API_URL =
   import.meta.env.VITE_API_URL ??
   `${window.location.protocol}//${window.location.hostname}:8000/api`;
-const ACCESS_TOKEN_KEY = "productivity_access_token";
-const REFRESH_TOKEN_KEY = "productivity_refresh_token";
+let accessToken: string | null = null;
+let refreshPromise: Promise<boolean> | null = null;
+const sessionChannel = typeof BroadcastChannel === "undefined"
+  ? null
+  : new BroadcastChannel("momentum_session");
 
 export function getAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return accessToken;
 }
 
-export function setTokens(tokens: TokenResponse) {
-  localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
-  localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
+export function setTokens(tokens: TokenResponse, announce = false) {
+  accessToken = tokens.access_token;
+  localStorage.removeItem("productivity_access_token");
+  localStorage.removeItem("productivity_refresh_token");
+  if (announce) {
+    sessionChannel?.postMessage(tokens);
+  }
+}
+
+export function subscribeToSessionChanges(handler: (tokens: TokenResponse) => void) {
+  if (!sessionChannel) return () => undefined;
+  const listener = (event: MessageEvent<TokenResponse>) => handler(event.data);
+  sessionChannel.addEventListener("message", listener);
+  return () => sessionChannel.removeEventListener("message", listener);
 }
 
 export function clearTokens() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  accessToken = null;
+  localStorage.removeItem("productivity_access_token");
+  localStorage.removeItem("productivity_refresh_token");
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function refreshAccessToken(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include"
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          clearTokens();
+          return false;
+        }
+        setTokens(await response.json() as TokenResponse);
+        return true;
+      })
+      .catch(() => {
+        clearTokens();
+        return false;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  retryAfterRefresh = true
+): Promise<T> {
   const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
+  if (!(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers,
+    credentials: "include"
+  });
+  if (response.status === 401 && retryAfterRefresh && !path.startsWith("/auth/")) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) return request<T>(path, options, false);
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(body.detail ?? "Request failed");
@@ -63,11 +120,82 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  register: (email: string, password: string) =>
-    request<User>("/auth/register", { method: "POST", body: JSON.stringify({ email, password }) }),
+  register: (displayName: string, email: string, password: string) =>
+    request<RegistrationResponse>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ display_name: displayName, email, password })
+    }),
   login: (email: string, password: string) =>
-    request<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+    request<TokenResponse>(
+      "/auth/login",
+      { method: "POST", body: JSON.stringify({ email, password }) },
+      false
+    ),
+  restoreSession: () => refreshAccessToken(),
+  logout: () => request<void>("/auth/logout", { method: "POST" }, false),
+  verifyEmail: (token: string) =>
+    request<VerificationSessionResponse>(
+      "/auth/verify-email",
+      { method: "POST", body: JSON.stringify({ token }) },
+      false
+    ).then((session) => {
+      if (session.access_token && session.token_type && session.expires_in) {
+        setTokens(session as TokenResponse, true);
+      }
+      return session;
+    }),
+  verifyEmailCode: (email: string, code: string) =>
+    request<VerificationSessionResponse>(
+      "/auth/verify-email-code",
+      { method: "POST", body: JSON.stringify({ email, code }) },
+      false
+    ).then((session) => {
+      if (session.access_token && session.token_type && session.expires_in) {
+        setTokens(session as TokenResponse, true);
+      }
+      return session;
+    }),
+  resendVerification: (email: string) =>
+    request<{ message: string; verification_url: string | null }>(
+      "/auth/resend-verification",
+      { method: "POST", body: JSON.stringify({ email }) },
+      false
+    ),
+  forgotPassword: (email: string) =>
+    request<{ message: string; verification_url: string | null }>(
+      "/auth/forgot-password",
+      { method: "POST", body: JSON.stringify({ email }) },
+      false
+    ),
+  resetPassword: (token: string, newPassword: string) =>
+    request<{ message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, new_password: newPassword })
+    }, false),
+  resetPasswordCode: (email: string, code: string, newPassword: string) =>
+    request<{ message: string }>("/auth/reset-password-code", {
+      method: "POST",
+      body: JSON.stringify({ email, code, new_password: newPassword })
+    }, false),
   me: () => request<User>("/auth/me"),
+  updateMe: (payload: { display_name: string | null; bio: string | null }) =>
+    request<User>("/auth/me", { method: "PUT", body: JSON.stringify(payload) }),
+  uploadAvatar: (avatar: File) => {
+    const form = new FormData();
+    form.append("avatar", avatar);
+    return request<User>("/auth/me/avatar", { method: "POST", body: form });
+  },
+  removeAvatar: () => request<User>("/auth/me/avatar", { method: "DELETE" }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<void>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+    }),
+  deleteAccount: (password: string, confirmation: string) =>
+    request<void>("/auth/account", {
+      method: "DELETE",
+      body: JSON.stringify({ password, confirmation })
+    }),
   categories: () => request<Category[]>("/categories"),
   createCategory: (name: string) =>
     request<Category>("/categories", { method: "POST", body: JSON.stringify({ name }) }),
@@ -100,8 +228,10 @@ export const api = {
   challenges: () => request<Challenge[]>("/social/challenges"),
   joinChallenge: (id: string) => request<Challenge>(`/social/challenges/${id}/join`, { method: "POST" }),
   leaveChallenge: (id: string) => request<void>(`/social/challenges/${id}/join`, { method: "DELETE" }),
-  follow: (id: string) => request<void>(`/social/people/${id}/follow`, { method: "POST" }),
-  unfollow: (id: string) => request<void>(`/social/people/${id}/follow`, { method: "DELETE" }),
+  sendFriendRequest: (id: string) => request<void>(`/social/people/${id}/friend-request`, { method: "POST" }),
+  acceptFriendRequest: (id: string) => request<void>(`/social/friend-requests/${id}/accept`, { method: "POST" }),
+  declineFriendRequest: (id: string) => request<void>(`/social/friend-requests/${id}`, { method: "DELETE" }),
+  removeFriend: (id: string) => request<void>(`/social/people/${id}/friendship`, { method: "DELETE" }),
   feed: () => request<FeedPost[]>("/social/feed"),
   comments: (postId: string) => request<PostComment[]>(`/social/posts/${postId}/comments`),
   createComment: (postId: string, content: string) =>
@@ -114,6 +244,7 @@ export const api = {
   unreact: (id: string) => request<void>(`/social/posts/${id}/reaction`, { method: "DELETE" }),
   notifications: () => request<SocialNotification[]>("/social/notifications"),
   markNotificationsRead: () => request<void>("/social/notifications/read", { method: "POST" }),
+  markNotificationRead: (id: string) => request<void>(`/social/notifications/${id}/read`, { method: "POST" }),
   commitments: () => request<AccountabilityCommitment[]>("/social/commitments"),
   inviteAccountability: (taskId: string, partnerId: string) =>
     request<AccountabilityCommitment>(`/social/tasks/${taskId}/accountability`, {
@@ -150,6 +281,7 @@ export const api = {
   groupActivity: (groupId: string) => request<GroupActivity[]>(`/groups/${groupId}/activity`),
   groupAnalytics: (groupId: string) => request<GroupAnalytics>(`/groups/${groupId}/analytics`),
   groupChallenges: (groupId: string) => request<GroupChallenge[]>(`/groups/${groupId}/challenges`),
+  groupAchievements: (groupId: string) => request<GroupAchievement[]>(`/groups/${groupId}/achievements`),
   createGroupChallenge: (groupId: string, payload: { title: string; description?: string | null; target: number; reward_xp: number; ends_at: string }) =>
     request<GroupChallenge>(`/groups/${groupId}/challenges`, {
       method: "POST",
@@ -214,3 +346,9 @@ export const api = {
     return request<AnalyticsReport>(`/statistics/analytics?${params}`);
   }
 };
+
+export function resolveAssetUrl(path: string | null) {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) return path;
+  return `${API_URL.replace(/\/api$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
+}

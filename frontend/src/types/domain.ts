@@ -7,6 +7,7 @@ export type User = {
   display_name: string | null;
   bio: string | null;
   avatar_url: string | null;
+  is_email_verified: boolean;
   role: "user" | "admin";
   created_at: string;
 };
@@ -132,7 +133,8 @@ export type Person = {
   level: number;
   current_streak: number;
   last_active_at: string | null;
-  is_following: boolean;
+  relationship_status: "none" | "pending_sent" | "pending_received" | "friends";
+  relationship_id: string | null;
 };
 
 export type LeaderboardEntry = {
@@ -174,11 +176,13 @@ export type PostComment = {
 
 export type SocialNotification = {
   id: string;
-  kind: "follow" | "reaction" | "comment" | "challenge" | "accountability" | "group";
+  kind: "friend_request" | "friend_accepted" | "reaction" | "comment" | "challenge" | "accountability" | "group";
   message: string;
   is_read: boolean;
   created_at: string;
   post_id: string | null;
+  friendship_id: string | null;
+  friendship_status: "pending" | "accepted" | null;
   actor: FeedPost["author"];
 };
 
@@ -304,7 +308,7 @@ export type GroupActivityComment = {
 
 export type GroupActivity = {
   id: string;
-  kind: "update" | "member_joined" | "task_created" | "task_status" | "task_assigned" | "task_completed" | "milestone_created" | "milestone_reached" | "challenge_created" | "challenge_completed" | "challenge_cancelled";
+  kind: "update" | "member_joined" | "task_created" | "task_status" | "task_assigned" | "task_completed" | "milestone_created" | "milestone_reached" | "challenge_created" | "challenge_completed" | "challenge_cancelled" | "achievement_unlocked";
   content: string;
   created_at: string;
   author: GroupActivityAuthor;
@@ -328,6 +332,19 @@ export type GroupChallenge = {
   completed: boolean;
   expired: boolean;
   can_manage: boolean;
+};
+
+export type GroupAchievement = {
+  code: string;
+  title: string;
+  description: string;
+  rarity: "common" | "rare" | "epic";
+  icon: "check" | "flag" | "trophy" | "heart" | "flame";
+  reward_xp: number;
+  progress: number;
+  target: number;
+  unlocked: boolean;
+  unlocked_at: string | null;
 };
 
 export type GroupAnalytics = {
@@ -381,6 +398,24 @@ export type AnalyticsReport = {
 
 export type TokenResponse = {
   access_token: string;
-  refresh_token: string;
   token_type: string;
+  expires_in: number;
+};
+
+export type VerificationSessionResponse = {
+  message: string;
+  access_token: string | null;
+  token_type: string | null;
+  expires_in: number | null;
+};
+
+export type RegistrationResponse = {
+  message: string;
+  email: string;
+  verification_url: string | null;
+};
+
+export type AuthMessageResponse = {
+  message: string;
+  verification_url: string | null;
 };

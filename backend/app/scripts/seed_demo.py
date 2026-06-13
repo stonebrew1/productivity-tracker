@@ -14,7 +14,7 @@ from app.models.social import (
     AccountabilityCommitment,
     Challenge,
     ChallengeMember,
-    Follow,
+    Friendship,
     GamificationRule,
     Notification,
     PostComment,
@@ -104,6 +104,7 @@ async def seed_demo() -> None:
             user.password_hash = hash_password(DEMO_PASSWORD)
         user.display_name = "Alex Morgan"
         user.bio = "Building a strong bachelor project through small, consistent wins."
+        user.is_email_verified = True
 
         peers: list[User] = []
         for email, display_name, bio in SOCIAL_USERS:
@@ -115,6 +116,7 @@ async def seed_demo() -> None:
             peer.password_hash = hash_password(DEMO_PASSWORD)
             peer.display_name = display_name
             peer.bio = bio
+            peer.is_email_verified = True
             peers.append(peer)
 
         seeded_users = [user, *peers]
@@ -158,8 +160,11 @@ async def seed_demo() -> None:
         await db.execute(delete(PostReaction).where(PostReaction.user_id.in_(seeded_user_ids)))
         await db.execute(delete(ActivityPost).where(ActivityPost.user_id.in_(seeded_user_ids)))
         await db.execute(
-            delete(Follow).where(
-                or_(Follow.follower_id.in_(seeded_user_ids), Follow.followed_id.in_(seeded_user_ids))
+            delete(Friendship).where(
+                or_(
+                    Friendship.requester_id.in_(seeded_user_ids),
+                    Friendship.addressee_id.in_(seeded_user_ids),
+                )
             )
         )
         await db.execute(delete(QuestCompletion).where(QuestCompletion.user_id.in_(seeded_user_ids)))
@@ -442,10 +447,18 @@ async def seed_demo() -> None:
         await db.flush()
         db.add_all(
             [
-                Follow(follower_id=user.id, followed_id=peers[0].id),
-                Follow(follower_id=user.id, followed_id=peers[1].id),
-                Follow(follower_id=peers[0].id, followed_id=user.id),
-                Follow(follower_id=peers[1].id, followed_id=user.id),
+                Friendship(
+                    requester_id=user.id,
+                    addressee_id=peers[0].id,
+                    status="accepted",
+                    responded_at=now - timedelta(days=10),
+                ),
+                Friendship(
+                    requester_id=user.id,
+                    addressee_id=peers[1].id,
+                    status="accepted",
+                    responded_at=now - timedelta(days=8),
+                ),
             ]
         )
         demo_posts = list(

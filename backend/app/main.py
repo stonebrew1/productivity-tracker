@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api import achievements, auth, categories, gamification, groups, social, statistics, tasks
 from app.core.config import get_settings
@@ -15,6 +17,7 @@ async def lifespan(app: FastAPI):
 
 
 settings = get_settings()
+Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(
     title="Productivity Tracker API",
@@ -38,6 +41,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")

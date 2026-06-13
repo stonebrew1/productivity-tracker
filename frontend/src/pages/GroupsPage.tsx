@@ -8,11 +8,12 @@ import {
   useSensor,
   useSensors
 } from "@dnd-kit/core";
-import { Activity, AlertTriangle, Award, BarChart3, CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Clock3, Copy, Crown, Flag, Flame, Gauge, GripVertical, Heart, KeyRound, LoaderCircle, MessageCircle, Pencil, Plus, RefreshCw, Save, Send, Shield, Target, Trash2, Trophy, UserPlus, UsersRound, X, Zap } from "lucide-react";
+import { Activity, AlertTriangle, Award, BarChart3, CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Clock3, Copy, Crown, Flag, Flame, Gauge, GripVertical, Heart, KeyRound, LayoutDashboard, LoaderCircle, Lock, Medal, MessageCircle, Pencil, Plus, RefreshCw, Save, Send, Shield, Target, Trash2, Trophy, UserPlus, UsersRound, X, Zap } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/client";
-import type { GroupActivity, GroupAnalytics, GroupChallenge, GroupInvitation, GroupMilestone, GroupProgress, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
+import type { GroupAchievement, GroupActivity, GroupAnalytics, GroupChallenge, GroupInvitation, GroupMilestone, GroupProgress, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
 
 const TASK_COLUMNS = [
   ["todo", "To do", Circle],
@@ -20,11 +21,23 @@ const TASK_COLUMNS = [
   ["done", "Done", CheckCircle2]
 ] as const;
 
+type GroupSection = "overview" | "tasks" | "milestones" | "challenges" | "activity" | "members";
+
+const GROUP_SECTIONS = [
+  ["overview", "Overview", LayoutDashboard],
+  ["tasks", "Tasks", ClipboardList],
+  ["milestones", "Milestones", Flag],
+  ["challenges", "Challenges", Target],
+  ["activity", "Activity", Activity],
+  ["members", "Members", UsersRound]
+] as const;
+
 export function GroupsPage({ onError }: { onError: (message: string | null) => void }) {
+  const { groupId, section } = useParams();
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<ProductivityGroup[]>([]);
   const [invitations, setInvitations] = useState<GroupInvitation[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -37,6 +50,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
   const [activity, setActivity] = useState<GroupActivity[]>([]);
   const [analytics, setAnalytics] = useState<GroupAnalytics | null>(null);
   const [challenges, setChallenges] = useState<GroupChallenge[]>([]);
+  const [achievements, setAchievements] = useState<GroupAchievement[]>([]);
   const [challengeTitle, setChallengeTitle] = useState("");
   const [challengeDescription, setChallengeDescription] = useState("");
   const [challengeTarget, setChallengeTarget] = useState("3");
@@ -59,6 +73,10 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
   const dragSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
+  const selectedId = groupId ?? null;
+  const groupSection: GroupSection = GROUP_SECTIONS.some(([id]) => id === section)
+    ? section as GroupSection
+    : "overview";
 
   async function loadGroups(preferredId?: string) {
     const [nextGroups, nextInvitations, nextPeople] = await Promise.all([
@@ -68,9 +86,16 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
     ]);
     setGroups(nextGroups);
     setInvitations(nextInvitations);
-    setPeople(nextPeople.filter((person) => person.is_following));
-    const nextSelected = preferredId ?? selectedId ?? nextGroups[0]?.id ?? null;
-    setSelectedId(nextGroups.some((group) => group.id === nextSelected) ? nextSelected : nextGroups[0]?.id ?? null);
+    setPeople(nextPeople.filter((person) => person.relationship_status === "friends"));
+    const requestedId = preferredId ?? groupId;
+    const nextSelected = nextGroups.some((group) => group.id === requestedId)
+      ? requestedId
+      : nextGroups[0]?.id;
+    if (nextSelected && (groupId !== nextSelected || section !== groupSection)) {
+      navigate(`/groups/${nextSelected}/${preferredId ? "overview" : groupSection}`, { replace: true });
+    } else if (!nextSelected && (groupId || section)) {
+      navigate("/groups", { replace: true });
+    }
   }
 
   useEffect(() => {
@@ -87,16 +112,26 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       setActivity([]);
       setAnalytics(null);
       setChallenges([]);
+      setAchievements([]);
       return;
     }
-    Promise.all([api.groupTasks(selectedId), api.groupMilestones(selectedId), api.groupProgress(selectedId), api.groupActivity(selectedId), api.groupAnalytics(selectedId), api.groupChallenges(selectedId)])
-      .then(([nextTasks, nextMilestones, nextProgress, nextActivity, nextAnalytics, nextChallenges]) => {
+    api.groupProgress(selectedId)
+      .then(async (nextProgress) => {
+        const [nextTasks, nextMilestones, nextActivity, nextAnalytics, nextChallenges, nextAchievements] = await Promise.all([
+          api.groupTasks(selectedId),
+          api.groupMilestones(selectedId),
+          api.groupActivity(selectedId),
+          api.groupAnalytics(selectedId),
+          api.groupChallenges(selectedId),
+          api.groupAchievements(selectedId)
+        ]);
         setTasks(nextTasks);
         setMilestones(nextMilestones);
         setProgress(nextProgress);
         setActivity(nextActivity);
         setAnalytics(nextAnalytics);
         setChallenges(nextChallenges);
+        setAchievements(nextAchievements);
       })
       .catch((error) => onError(error instanceof Error ? error.message : "Unable to load group tasks"));
   }, [selectedId]);
@@ -123,7 +158,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       setName("");
       setDescription("");
     }, createdId);
-    if (createdId) setSelectedId(createdId);
+    if (createdId) navigate(`/groups/${createdId}/overview`);
   }
 
   async function submitJoin(event: FormEvent) {
@@ -134,18 +169,19 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       joinedId = group.id;
       setJoinCode("");
     }, joinedId);
-    if (joinedId) setSelectedId(joinedId);
+    if (joinedId) navigate(`/groups/${joinedId}/overview`);
   }
 
   async function refreshTasks(groupId = selectedId) {
     if (!groupId) return;
-    const [nextTasks, nextMilestones, nextProgress, nextActivity, nextAnalytics, nextChallenges] = await Promise.all([
+    const nextProgress = await api.groupProgress(groupId);
+    const [nextTasks, nextMilestones, nextActivity, nextAnalytics, nextChallenges, nextAchievements] = await Promise.all([
       api.groupTasks(groupId),
       api.groupMilestones(groupId),
-      api.groupProgress(groupId),
       api.groupActivity(groupId),
       api.groupAnalytics(groupId),
-      api.groupChallenges(groupId)
+      api.groupChallenges(groupId),
+      api.groupAchievements(groupId)
     ]);
     setTasks(nextTasks);
     setMilestones(nextMilestones);
@@ -153,6 +189,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
     setActivity(nextActivity);
     setAnalytics(nextAnalytics);
     setChallenges(nextChallenges);
+    setAchievements(nextAchievements);
   }
 
   async function submitChallenge(event: FormEvent) {
@@ -261,12 +298,14 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
         await api.recognizeGroupActivity(item.id);
       }
       if (selectedId) {
-        const [nextActivity, nextProgress] = await Promise.all([
+        const nextProgress = await api.groupProgress(selectedId);
+        const [nextActivity, nextAchievements] = await Promise.all([
           api.groupActivity(selectedId),
-          api.groupProgress(selectedId)
+          api.groupAchievements(selectedId)
         ]);
         setActivity(nextActivity);
         setProgress(nextProgress);
+        setAchievements(nextAchievements);
       }
     } catch (error) {
       setActivity(previousActivity);
@@ -372,18 +411,20 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       const updated = await api.updateGroupTask(taskId, { status });
       setTasks((items) => items.map((task) => task.id === taskId ? updated : task));
       if (selectedId) {
-        const [nextMilestones, nextProgress, nextActivity, nextAnalytics, nextChallenges] = await Promise.all([
+        const nextProgress = await api.groupProgress(selectedId);
+        const [nextMilestones, nextActivity, nextAnalytics, nextChallenges, nextAchievements] = await Promise.all([
           api.groupMilestones(selectedId),
-          api.groupProgress(selectedId),
           api.groupActivity(selectedId),
           api.groupAnalytics(selectedId),
-          api.groupChallenges(selectedId)
+          api.groupChallenges(selectedId),
+          api.groupAchievements(selectedId)
         ]);
         setMilestones(nextMilestones);
         setProgress(nextProgress);
         setActivity(nextActivity);
         setAnalytics(nextAnalytics);
         setChallenges(nextChallenges);
+        setAchievements(nextAchievements);
       }
     } catch (error) {
       setTasks(previousTasks);
@@ -456,7 +497,9 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
           <section className="group-list-panel">
             <div className="section-heading"><h2>Your groups</h2><span>{groups.length}</span></div>
             {groups.map((group) => (
-              <button className={selectedId === group.id ? "active" : ""} onClick={() => setSelectedId(group.id)} key={group.id}>
+              <button className={selectedId === group.id ? "active" : ""} onClick={() => {
+                navigate(`/groups/${group.id}/overview`);
+              }} key={group.id}>
                 <span className="group-icon"><UsersRound size={17} /></span>
                 <span><strong>{group.name}</strong><small>{group.member_count} members</small></span>
                 {group.role === "leader" && <Crown size={14} />}
@@ -492,6 +535,21 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                 <div className="group-hero-stat"><strong>{selected.member_count}</strong><span>members</span></div>
               </section>
 
+              <nav className="group-section-nav" aria-label={`${selected.name} workspace sections`}>
+                {GROUP_SECTIONS.map(([id, label, Icon]) => (
+                  <button
+                    className={groupSection === id ? "active" : ""}
+                    key={id}
+                    onClick={() => navigate(`/groups/${selected.id}/${id}`)}
+                  >
+                    <Icon size={15} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </nav>
+
+              {groupSection === "overview" && (
+                <>
               {progress && (
                 <section className="group-progress">
                   <div className="group-progress-metrics">
@@ -530,6 +588,41 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                 </section>
               )}
 
+              <section className="group-achievements">
+                <div className="section-heading">
+                  <h2>Group achievements</h2>
+                  <span><Medal size={13} />{achievements.filter((item) => item.unlocked).length} / {achievements.length} unlocked</span>
+                </div>
+                <div className="group-achievement-grid">
+                  {achievements.map((achievement) => {
+                    const percent = Math.min(100, Math.round((achievement.progress / achievement.target) * 100));
+                    return (
+                      <article className={`${achievement.unlocked ? "unlocked" : ""} ${achievement.rarity}`} key={achievement.code}>
+                        <span className="group-achievement-icon">
+                          {achievement.unlocked ? groupAchievementIcon(achievement.icon) : <Lock size={18} />}
+                        </span>
+                        <div>
+                          <header>
+                            <span>{achievement.rarity}</span>
+                            <b>+{achievement.reward_xp} XP each</b>
+                          </header>
+                          <strong>{achievement.title}</strong>
+                          <p>{achievement.description}</p>
+                          <div className="group-achievement-progress"><i style={{ width: `${percent}%` }} /></div>
+                          <footer>
+                            <span>{achievement.progress} / {achievement.target}</span>
+                            <time>{achievement.unlocked_at ? `Unlocked ${new Date(achievement.unlocked_at).toLocaleDateString()}` : "In progress"}</time>
+                          </footer>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+                </>
+              )}
+
+              {groupSection === "challenges" && (
               <section className="group-challenges">
                 <div className="section-heading">
                   <h2>Team challenges</h2>
@@ -564,10 +657,11 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                   {challenges.length === 0 && <div className="group-task-empty"><Target size={18} /><span>No team challenge yet</span></div>}
                 </div>
               </section>
+              )}
 
-              {analytics && <GroupInsights analytics={analytics} />}
+              {groupSection === "overview" && analytics && <GroupInsights analytics={analytics} />}
 
-              {selected.role === "leader" && (
+              {groupSection === "members" && selected.role === "leader" && (
                 <section className="leader-tools">
                   <div className="section-heading"><h2>Leader tools</h2><span><Shield size={13} /> Leader only</span></div>
                   <div className="leader-tool-grid">
@@ -594,6 +688,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                 </section>
               )}
 
+              {groupSection === "milestones" && (
               <section className="group-milestones">
                 <div className="section-heading">
                   <h2>Milestones</h2>
@@ -632,7 +727,9 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                   {milestones.length === 0 && <div className="group-task-empty"><Flag size={18} /><span>No milestones</span></div>}
                 </div>
               </section>
+              )}
 
+              {groupSection === "tasks" && (
               <section className="group-work">
                 <div className="section-heading">
                   <h2>Shared tasks</h2>
@@ -709,7 +806,9 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                   </DragOverlay>
                 </DndContext>
               </section>
+              )}
 
+              {groupSection === "activity" && (
               <section className="group-activity">
                 <div className="section-heading">
                   <h2>Team activity</h2>
@@ -775,7 +874,9 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                   {activity.length === 0 && <div className="group-task-empty"><Activity size={18} /><span>No group activity yet</span></div>}
                 </div>
               </section>
+              )}
 
+              {groupSection === "members" && (
               <section className="group-roster">
                 <div className="section-heading"><h2>Participants</h2><span>{selected.member_count} total</span></div>
                 {selected.members.map((member) => (
@@ -786,6 +887,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                   </article>
                 ))}
               </section>
+              )}
 
             </>
           )}
@@ -929,6 +1031,7 @@ function GroupTaskPreview({ task }: { task: GroupTask }) {
 }
 
 function activityIcon(kind: GroupActivity["kind"]) {
+  if (kind === "achievement_unlocked") return <Medal size={15} />;
   if (kind === "challenge_completed") return <Trophy size={15} />;
   if (kind === "challenge_cancelled") return <X size={15} />;
   if (kind === "challenge_created") return <Target size={15} />;
@@ -937,6 +1040,14 @@ function activityIcon(kind: GroupActivity["kind"]) {
   if (kind === "member_joined") return <UserPlus size={15} />;
   if (kind.startsWith("task")) return <ClipboardList size={15} />;
   return <MessageCircle size={15} />;
+}
+
+function groupAchievementIcon(icon: GroupAchievement["icon"]) {
+  if (icon === "check") return <CheckCircle2 size={19} />;
+  if (icon === "flag") return <Flag size={19} />;
+  if (icon === "trophy") return <Trophy size={19} />;
+  if (icon === "heart") return <Heart size={19} />;
+  return <Flame size={19} />;
 }
 
 function relativeGroupTime(value: string) {

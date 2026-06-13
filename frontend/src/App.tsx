@@ -1,64 +1,143 @@
-import { BarChart3, CheckSquare2, Flame, Home, LogOut, Trophy, Users, UsersRound, Zap } from "lucide-react";
+import { BarChart3, Bell, CheckSquare2, Flame, Home, LogOut, Trophy, Users, UsersRound, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
-import { api, clearTokens, getAccessToken, setTokens } from "./api/client";
+import { api, clearTokens, setTokens, subscribeToSessionChanges } from "./api/client";
+import { UserAvatar } from "./components/UserAvatar";
 import { AchievementsPage } from "./pages/AchievementsPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { GroupsPage } from "./pages/GroupsPage";
+import { InboxPage } from "./pages/InboxPage";
+import { ProfilePage } from "./pages/ProfilePage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { StatisticsPage } from "./pages/StatisticsPage";
 import { SocialPage } from "./pages/SocialPage";
 import { TasksPage } from "./pages/TasksPage";
-import type { Achievement, Category, Stats, Task, User } from "./types/domain";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
+import type { Achievement, Category, RegistrationResponse, Stats, Task, User } from "./types/domain";
 
-type View = "dashboard" | "tasks" | "social" | "groups" | "achievements" | "statistics";
+const NAV_ITEMS: Array<{
+  path: string;
+  label: string;
+  icon: typeof Home;
+}> = [
+  { path: "/today", label: "Today", icon: Home },
+  { path: "/tasks", label: "Tasks", icon: CheckSquare2 },
+  { path: "/social", label: "Social", icon: Users },
+  { path: "/groups", label: "Groups", icon: UsersRound },
+  { path: "/progress", label: "Progress", icon: Trophy },
+  { path: "/statistics", label: "Statistics", icon: BarChart3 }
+];
 
 export function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [view, setView] = useState<View>("dashboard");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(Boolean(getAccessToken()));
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isStandaloneAuthRoute = ["/verify-email", "/forgot-password", "/reset-password"].includes(location.pathname);
 
   async function loadWorkspace() {
     setError(null);
-    const [me, nextTasks, nextCategories, nextAchievements, nextStats] = await Promise.all([
+    const [me, nextTasks, nextCategories, nextAchievements, nextStats, nextNotifications] = await Promise.all([
       api.me(),
       api.tasks(),
       api.categories(),
       api.achievements(),
-      api.statistics()
+      api.statistics(),
+      api.notifications()
     ]);
     setUser(me);
     setTasks(nextTasks);
     setCategories(nextCategories);
     setAchievements(nextAchievements);
     setStats(nextStats);
+    setUnreadNotifications(nextNotifications.filter((notification) => !notification.is_read).length);
   }
 
-  useEffect(() => {
-    if (!getAccessToken()) return;
-    loadWorkspace().catch(() => clearTokens()).finally(() => setLoading(false));
-  }, []);
-
-  async function handleLogin(email: string, password: string, isRegister: boolean) {
-    setError(null);
-    if (isRegister) await api.register(email, password);
-    const tokens = await api.login(email, password);
-    setTokens(tokens);
-    await loadWorkspace();
-  }
-
-  function handleLogout() {
-    clearTokens();
+  function resetWorkspaceState() {
     setUser(null);
     setTasks([]);
     setCategories([]);
     setAchievements([]);
     setStats(null);
+    setUnreadNotifications(0);
+  }
+
+  function clearWorkspace() {
+    clearTokens();
+    resetWorkspaceState();
+  }
+
+  useEffect(() => {
+    if (isStandaloneAuthRoute) {
+      setLoading(false);
+      return;
+    }
+    api.restoreSession()
+      .then((restored) => restored ? loadWorkspace() : undefined)
+      .catch(() => clearTokens())
+      .finally(() => setLoading(false));
+  }, [isStandaloneAuthRoute]);
+
+  useEffect(() => {
+    return subscribeToSessionChanges((tokens) => {
+      setTokens(tokens);
+      resetWorkspaceState();
+      loadWorkspace().catch(() => {
+        clearWorkspace();
+        navigate("/login", { replace: true });
+      });
+    });
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    const refreshUnread = () => {
+      api.notifications()
+        .then((notifications) => setUnreadNotifications(notifications.filter((notification) => !notification.is_read).length))
+        .catch(() => undefined);
+    };
+    const interval = window.setInterval(refreshUnread, 30_000);
+    window.addEventListener("focus", refreshUnread);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshUnread);
+    };
+  }, [user?.id]);
+
+  async function handleVerifiedSession() {
+    resetWorkspaceState();
+    await loadWorkspace();
+  }
+
+  async function handleLogin(email: string, password: string) {
+    setError(null);
+    const tokens = await api.login(email, password);
+    setTokens(tokens, true);
+    await loadWorkspace();
+    const requestedPath = (location.state as { from?: string } | null)?.from;
+    navigate(requestedPath && requestedPath !== "/login" ? requestedPath : "/today", { replace: true });
+  }
+
+  async function handleRegister(
+    displayName: string, email: string, password: string
+  ): Promise<RegistrationResponse> {
+    setError(null);
+    return api.register(displayName, email, password);
+  }
+
+  async function handleLogout() {
+    await api.logout().catch(() => undefined);
+    clearWorkspace();
+    navigate("/login", { replace: true });
   }
 
   async function refreshData() {
@@ -70,20 +149,41 @@ export function App() {
   }
 
   if (loading) return <div className="loading">Loading workspace...</div>;
-  if (!user) return <AuthPage onSubmit={handleLogin} error={error} setError={setError} />;
+  if (isStandaloneAuthRoute) {
+    return (
+      <Routes>
+        <Route path="/verify-email" element={<VerifyEmailPage onVerified={handleVerifiedSession} />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+      </Routes>
+    );
+  }
+  if (!user) {
+    return (
+      <Routes>
+        <Route
+          path="/login"
+          element={<AuthPage onLogin={handleLogin} onRegister={handleRegister} onResend={api.resendVerification} error={error} setError={setError} />}
+        />
+        <Route path="*" element={<Navigate to="/login" replace state={{ from: location.pathname }} />} />
+      </Routes>
+    );
+  }
 
-  const navItems = [
-    { id: "dashboard" as View, label: "Today", icon: Home },
-    { id: "tasks" as View, label: "Tasks", icon: CheckSquare2 },
-    { id: "social" as View, label: "Social", icon: Users },
-    { id: "groups" as View, label: "Groups", icon: UsersRound },
-    { id: "achievements" as View, label: "Progress", icon: Trophy },
-    { id: "statistics" as View, label: "Statistics", icon: BarChart3 }
-  ];
   const displayName = user.display_name || user.email.split("@")[0];
   const level = stats?.level ?? 1;
   const xp = stats?.xp_total ?? 0;
   const streak = stats?.current_streak ?? 0;
+  const activeNav = NAV_ITEMS.find((item) =>
+    item.path === "/groups"
+      ? location.pathname.startsWith("/groups")
+      : location.pathname === item.path
+  );
+  const activeLabel = location.pathname === "/inbox"
+    ? "Inbox"
+    : location.pathname === "/profile"
+      ? "Profile"
+      : activeNav?.label ?? "Today";
 
   return (
     <div className="app-shell">
@@ -92,88 +192,122 @@ export function App() {
           <span className="brand-mark"><Zap size={20} fill="currentColor" /></span>
           <span className="brand-copy"><strong>Momentum</strong></span>
         </div>
-        <section className="sidebar-profile">
-          <span className="account-avatar">{displayName.slice(0, 1).toUpperCase()}</span>
+        <NavLink className="sidebar-profile" to="/profile">
+          <UserAvatar name={displayName} avatarUrl={user.avatar_url} className="account-avatar" />
           <div><strong>{displayName}</strong><span>Level {level}</span></div>
           <span className="streak-pill"><Flame size={13} />{streak}</span>
-        </section>
+        </NavLink>
         <div className="sidebar-xp">
           <div><span>{xp} XP</span><span>Level {level}</span></div>
           <i><b style={{ width: `${stats ? Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100) : 0}%` }} /></i>
         </div>
         <nav aria-label="Primary navigation">
-          {navItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
-              <button
+              <NavLink
                 aria-label={item.label}
-                className={view === item.id ? "active" : ""}
-                key={item.id}
-                onClick={() => setView(item.id)}
+                className={({ isActive }) => isActive ? "active" : ""}
+                end={item.path !== "/groups"}
+                key={item.path}
                 title={item.label}
+                to={item.path}
               >
                 <Icon size={18} />
                 <span>{item.label}</span>
-              </button>
+              </NavLink>
             );
           })}
         </nav>
         <div className="account">
-          <button aria-label="Sign out" title="Sign out" onClick={handleLogout}><LogOut size={17} /><span>Sign out</span></button>
+          <button aria-label="Sign out" title="Sign out" onClick={() => void handleLogout()}><LogOut size={17} /><span>Sign out</span></button>
         </div>
       </aside>
       <div className="workspace">
         <header className="mobile-header">
           <div className="brand">
             <span className="brand-mark"><Zap size={18} fill="currentColor" /></span>
-            <span className="brand-copy"><strong>Momentum</strong><small>{navItems.find((item) => item.id === view)?.label}</small></span>
+            <span className="brand-copy"><strong>Momentum</strong><small>{activeLabel}</small></span>
           </div>
           <span className="mobile-streak"><Flame size={15} /> {streak}</span>
+          <InboxLink className="mobile-inbox" unread={unreadNotifications} />
+          <NavLink aria-label="Profile" className="mobile-profile" title="Profile" to="/profile">
+            <UserAvatar name={displayName} avatarUrl={user.avatar_url} className="utility-avatar" />
+          </NavLink>
         </header>
         <main className="content">
           <div className="content-inner">
+            <div className="workspace-topbar">
+              <NavLink aria-label="Profile" className="workspace-profile" title="Profile" to="/profile">
+                <UserAvatar name={displayName} avatarUrl={user.avatar_url} className="utility-avatar" />
+              </NavLink>
+              <InboxLink className="workspace-inbox" unread={unreadNotifications} />
+            </div>
             {error && <div className="alert">{error}</div>}
-            {view === "dashboard" && (
-              <DashboardPage
-                tasks={tasks}
-                categories={categories}
-                achievements={achievements}
-                stats={stats}
-                onChanged={refreshData}
-                onError={setError}
+            <Routes>
+              <Route path="/" element={<Navigate to="/today" replace />} />
+              <Route
+                path="/today"
+                element={<DashboardPage tasks={tasks} categories={categories} achievements={achievements} stats={stats} onChanged={refreshData} onError={setError} />}
               />
-            )}
-            {view === "tasks" && (
-              <TasksPage
-                tasks={tasks}
-                categories={categories}
-                onChanged={refreshData}
-                onError={setError}
+              <Route
+                path="/tasks"
+                element={<TasksPage tasks={tasks} categories={categories} onChanged={refreshData} onError={setError} />}
               />
-            )}
-            {view === "social" && <SocialPage onError={setError} />}
-            {view === "groups" && <GroupsPage onError={setError} />}
-            {view === "achievements" && <AchievementsPage onError={setError} />}
-            {view === "statistics" && <StatisticsPage stats={stats} />}
+              <Route path="/social" element={<SocialPage onError={setError} onUnreadChange={setUnreadNotifications} />} />
+              <Route path="/groups" element={<GroupsPage onError={setError} />} />
+              <Route path="/groups/:groupId" element={<GroupsPage onError={setError} />} />
+              <Route path="/groups/:groupId/:section" element={<GroupsPage onError={setError} />} />
+              <Route path="/progress" element={<AchievementsPage onError={setError} />} />
+              <Route path="/statistics" element={<StatisticsPage stats={stats} />} />
+              <Route path="/inbox" element={<InboxPage onError={setError} onUnreadChange={setUnreadNotifications} />} />
+              <Route
+                path="/profile"
+                element={(
+                  <ProfilePage
+                    user={user}
+                    stats={stats}
+                    onUserChange={setUser}
+                    onDeleted={() => {
+                      clearWorkspace();
+                      navigate("/login", { replace: true });
+                    }}
+                    onError={setError}
+                  />
+                )}
+              />
+              <Route path="/login" element={<Navigate to="/today" replace />} />
+              <Route path="*" element={<Navigate to="/today" replace />} />
+            </Routes>
           </div>
         </main>
         <nav className="mobile-nav" aria-label="Mobile navigation">
-          {navItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
-              <button
+              <NavLink
                 aria-label={item.label}
-                className={view === item.id ? "active" : ""}
-                key={item.id}
-                onClick={() => setView(item.id)}
+                className={({ isActive }) => isActive ? "active" : ""}
+                end={item.path !== "/groups"}
+                key={item.path}
+                to={item.path}
               >
                 <Icon size={20} />
-                <span>{item.label === "Gamification" ? "Progress" : item.label}</span>
-              </button>
+                <span>{item.label}</span>
+              </NavLink>
             );
           })}
         </nav>
       </div>
     </div>
+  );
+}
+
+function InboxLink({ className, unread }: { className: string; unread: number }) {
+  return (
+    <NavLink aria-label={unread > 0 ? `Inbox, ${unread} unread` : "Inbox"} className={className} title="Inbox" to="/inbox">
+      <Bell size={18} />
+      {unread > 0 && <b>{unread > 9 ? "9+" : unread}</b>}
+    </NavLink>
   );
 }
