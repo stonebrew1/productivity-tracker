@@ -53,7 +53,7 @@ BADGE_CATALOG = [
     {
         "code": "open_book_3",
         "title": "Open book",
-        "description": "Share three completed tasks with followers.",
+        "description": "Share three completed tasks with friends.",
         "category": "social",
         "rarity": "rare",
         "icon": "globe",

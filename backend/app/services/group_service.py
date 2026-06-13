@@ -8,11 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.models.group import GroupInvitation, GroupMember, ProductivityGroup
-from app.models.social import Follow, Notification
+from app.models.social import Notification
 from app.models.user import User
 from app.models.user_stats import UserStats
 from app.schemas.group import GroupInvitationRead, GroupMemberRead, GroupRead
 from app.services.gamification_service import level_from_xp
+from app.services.friendship_service import are_friends
 
 
 async def group_read(group: ProductivityGroup, viewer_id: UUID, db: AsyncSession) -> GroupRead:
@@ -114,11 +115,8 @@ async def invite_user(group_id: UUID, user_id: UUID, leader: User, db: AsyncSess
     ):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This user is already a member.")
     target = await db.get(User, user_id)
-    follows = await db.scalar(
-        select(Follow.id).where(Follow.follower_id == leader.id, Follow.followed_id == user_id)
-    )
-    if not target or not follows:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Follow this user before inviting them.")
+    if not target or not await are_friends(leader.id, user_id, db):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Add this user as a friend before inviting them.")
     pending = await db.scalar(
         select(GroupInvitation).where(
             GroupInvitation.group_id == group.id,

@@ -1,4 +1,4 @@
-import { BarChart3, CheckSquare2, Flame, Home, LogOut, Trophy, Users, UsersRound, Zap } from "lucide-react";
+import { BarChart3, Bell, CheckSquare2, Flame, Home, LogOut, Trophy, Users, UsersRound, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
@@ -7,19 +7,26 @@ import { AchievementsPage } from "./pages/AchievementsPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { GroupsPage } from "./pages/GroupsPage";
+import { InboxPage } from "./pages/InboxPage";
 import { StatisticsPage } from "./pages/StatisticsPage";
 import { SocialPage } from "./pages/SocialPage";
 import { TasksPage } from "./pages/TasksPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import type { Achievement, Category, RegistrationResponse, Stats, Task, User } from "./types/domain";
 
-const NAV_ITEMS = [
+const NAV_ITEMS: Array<{
+  path: string;
+  label: string;
+  icon: typeof Home;
+  desktopOnly?: boolean;
+}> = [
   { path: "/today", label: "Today", icon: Home },
   { path: "/tasks", label: "Tasks", icon: CheckSquare2 },
   { path: "/social", label: "Social", icon: Users },
   { path: "/groups", label: "Groups", icon: UsersRound },
   { path: "/progress", label: "Progress", icon: Trophy },
-  { path: "/statistics", label: "Statistics", icon: BarChart3 }
+  { path: "/statistics", label: "Statistics", icon: BarChart3 },
+  { path: "/inbox", label: "Inbox", icon: Bell, desktopOnly: true }
 ];
 
 export function App() {
@@ -195,6 +202,7 @@ export function App() {
             <span className="brand-copy"><strong>Momentum</strong><small>{activeNav?.label ?? "Today"}</small></span>
           </div>
           <span className="mobile-streak"><Flame size={15} /> {streak}</span>
+          <NavLink className="mobile-inbox" title="Inbox" to="/inbox"><Bell size={18} /></NavLink>
         </header>
         <main className="content">
           <div className="content-inner">
@@ -215,13 +223,14 @@ export function App() {
               <Route path="/groups/:groupId/:section" element={<GroupsPage onError={setError} />} />
               <Route path="/progress" element={<AchievementsPage onError={setError} />} />
               <Route path="/statistics" element={<StatisticsPage stats={stats} />} />
+              <Route path="/inbox" element={<InboxPage onError={setError} />} />
               <Route path="/login" element={<Navigate to="/today" replace />} />
               <Route path="*" element={<Navigate to="/today" replace />} />
             </Routes>
           </div>
         </main>
         <nav className="mobile-nav" aria-label="Mobile navigation">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => !item.desktopOnly).map((item) => {
             const Icon = item.icon;
             return (
               <NavLink

@@ -1,5 +1,6 @@
-import { Bell, Check, CheckCircle2, Crown, Flag, Flame, Handshake, Heart, Medal, MessageCircle, Send, Sparkles, Trash2, UserMinus, UserPlus, UsersRound, X, Zap } from "lucide-react";
+import { Bell, Check, CheckCircle2, Clock3, Crown, Flag, Flame, Handshake, Heart, Medal, MessageCircle, Send, Sparkles, Trash2, UserMinus, UserPlus, UsersRound, X, Zap } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { api } from "../api/client";
 import type { AccountabilityCommitment, FeedPost, GamificationDashboard, LeaderboardEntry, Person, PostComment, Profile, SocialNotification } from "../types/domain";
@@ -110,7 +111,7 @@ export function SocialPage({ onError }: Props) {
     ["weekly_encourage_3", "weekly_comment_2"].includes(quest.code)
   ) ?? [];
   const activePeople = people
-    .filter((person) => person.is_following && person.last_active_at)
+    .filter((person) => person.relationship_status === "friends" && person.last_active_at)
     .sort((left, right) => new Date(right.last_active_at!).getTime() - new Date(left.last_active_at!).getTime())
     .slice(0, 4);
 
@@ -197,7 +198,7 @@ export function SocialPage({ onError }: Props) {
             <div className="social-empty">
               <CheckCircle2 size={24} />
               <strong>Your feed is ready.</strong>
-              <p>Follow someone or complete a public task to create the first update.</p>
+              <p>Add friends or complete a public task to create the first update.</p>
             </div>
           ) : feed.map((post) => (
             <article className="feed-post" key={post.id}>
@@ -253,25 +254,19 @@ export function SocialPage({ onError }: Props) {
                 <small><Flame size={12} />{person.current_streak}</small>
               </div>
             ))}
-            {activePeople.length === 0 && <p className="muted compact-copy">Follow people to see their recent momentum.</p>}
+            {activePeople.length === 0 && <p className="muted compact-copy">Add friends to see their recent momentum.</p>}
           </section>
           <ProfileEditor profile={profile} onSave={(payload) => mutate(() => api.updateProfile(payload))} />
           <section className="people-section">
             <div className="section-heading">
               <h2>People</h2>
-              <span>{people.filter((person) => person.is_following).length} following</span>
+              <span>{people.filter((person) => person.relationship_status === "friends").length} friends</span>
             </div>
             {people.map((person) => (
               <div className="person-row" key={person.id}>
                 <Avatar name={person.display_name ?? person.email} />
                 <div><strong>{person.display_name || person.email.split("@")[0]}</strong><span>Level {person.level}</span></div>
-                <button
-                  title={person.is_following ? "Unfollow" : "Follow"}
-                  className={person.is_following ? "following" : ""}
-                  onClick={() => mutate(() => person.is_following ? api.unfollow(person.id) : api.follow(person.id))}
-                >
-                  {person.is_following ? <UserMinus size={16} /> : <UserPlus size={16} />}
-                </button>
+                <FriendAction person={person} onMutate={mutate} />
               </div>
             ))}
           </section>
@@ -363,7 +358,10 @@ function Notifications({
     <section className="notifications-panel">
       <div className="section-heading">
         <h2><Bell size={15} /> Notifications {unread > 0 && <b>{unread}</b>}</h2>
-        {unread > 0 && <button title="Mark all read" onClick={onRead}><Check size={15} /></button>}
+        <div className="notification-heading-actions">
+          <Link to="/inbox">View all</Link>
+          {unread > 0 && <button title="Mark all read" onClick={onRead}><Check size={15} /></button>}
+        </div>
       </div>
       {notifications.slice(0, 5).map((notification) => (
         <div className={`notification-row ${notification.is_read ? "" : "unread"}`} key={notification.id}>
@@ -373,6 +371,41 @@ function Notifications({
       ))}
       {notifications.length === 0 && <p className="muted compact-copy">No notifications yet.</p>}
     </section>
+  );
+}
+
+function FriendAction({
+  person,
+  onMutate
+}: {
+  person: Person;
+  onMutate: (action: () => Promise<unknown>) => Promise<void>;
+}) {
+  if (person.relationship_status === "friends") {
+    return (
+      <button className="following" title="Remove friend" onClick={() => onMutate(() => api.removeFriend(person.id))}>
+        <UserMinus size={16} />
+      </button>
+    );
+  }
+  if (person.relationship_status === "pending_sent") {
+    return (
+      <button className="pending" title="Cancel friend request" onClick={() => onMutate(() => api.declineFriendRequest(person.relationship_id!))}>
+        <Clock3 size={16} />
+      </button>
+    );
+  }
+  if (person.relationship_status === "pending_received") {
+    return (
+      <button className="incoming" title="Accept friend request" onClick={() => onMutate(() => api.acceptFriendRequest(person.relationship_id!))}>
+        <Check size={16} />
+      </button>
+    );
+  }
+  return (
+    <button title="Add friend" onClick={() => onMutate(() => api.sendFriendRequest(person.id))}>
+      <UserPlus size={16} />
+    </button>
   );
 }
 

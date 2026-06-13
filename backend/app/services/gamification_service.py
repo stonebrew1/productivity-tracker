@@ -65,7 +65,7 @@ QUEST_CATALOG = [
     {
         "code": "weekly_encourage_3",
         "title": "Lift the circle",
-        "description": "Encourage three updates from people you follow this week.",
+        "description": "Encourage three updates from friends this week.",
         "cadence": "weekly",
         "metric": "reactions",
         "target": 3,

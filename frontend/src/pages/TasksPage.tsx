@@ -29,7 +29,7 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
 
   async function loadAccountability() {
     const [nextPeople, nextCommitments] = await Promise.all([api.people(), api.commitments()]);
-    setPeople(nextPeople.filter((person) => person.is_following));
+    setPeople(nextPeople.filter((person) => person.relationship_status === "friends"));
     setCommitments(nextCommitments);
   }
 

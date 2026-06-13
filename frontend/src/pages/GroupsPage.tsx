@@ -86,7 +86,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
     ]);
     setGroups(nextGroups);
     setInvitations(nextInvitations);
-    setPeople(nextPeople.filter((person) => person.is_following));
+    setPeople(nextPeople.filter((person) => person.relationship_status === "friends"));
     const requestedId = preferredId ?? groupId;
     const nextSelected = nextGroups.some((group) => group.id === requestedId)
       ? requestedId

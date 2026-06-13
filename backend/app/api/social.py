@@ -12,7 +12,7 @@ from app.models.social import (
     ActivityPost,
     Challenge,
     ChallengeMember,
-    Follow,
+    Friendship,
     Notification,
     PostComment,
     PostReaction,
@@ -43,6 +43,7 @@ from app.services.accountability_service import (
     respond_to_commitment,
 )
 from app.services.stats_service import ensure_stats
+from app.services.friendship_service import are_friends, friend_ids_query, friendship_between
 
 
 router = APIRouter(prefix="/social", tags=["social"])
@@ -75,9 +76,27 @@ async def list_people(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[PersonRead]:
-    following_ids = set(
-        await db.scalars(select(Follow.followed_id).where(Follow.follower_id == current_user.id))
+    friendships = list(
+        await db.scalars(
+            select(Friendship).where(
+                or_(
+                    Friendship.requester_id == current_user.id,
+                    Friendship.addressee_id == current_user.id,
+                )
+            )
+        )
     )
+    relationship_by_user = {
+        friendship.addressee_id if friendship.requester_id == current_user.id else friendship.requester_id:
+        (
+            "friends"
+            if friendship.status == "accepted"
+            else "pending_sent"
+            if friendship.requester_id == current_user.id
+            else "pending_received"
+        )
+        for friendship in friendships
+    }
     rows = (
         await db.execute(
             select(User, UserStats, func.max(ActivityPost.created_at))
@@ -98,7 +117,15 @@ async def list_people(
             level=level_from_xp(stats.xp_total if stats else 0),
             current_streak=stats.current_streak if stats else 0,
             last_active_at=last_active_at,
-            is_following=user.id in following_ids,
+            relationship_status=relationship_by_user.get(user.id, "none"),
+            relationship_id=next(
+                (
+                    friendship.id
+                    for friendship in friendships
+                    if user.id in {friendship.requester_id, friendship.addressee_id}
+                ),
+                None,
+            ),
         )
         for user, stats, last_active_at in rows
     ]
@@ -115,7 +142,7 @@ async def read_leaderboard(
         datetime.min.time(),
         tzinfo=timezone.utc,
     )
-    followed = select(Follow.followed_id).where(Follow.follower_id == current_user.id)
+    friend_ids = friend_ids_query(current_user.id)
     rows = (
         await db.execute(
             select(
@@ -128,7 +155,7 @@ async def read_leaderboard(
                 XpAward,
                 (XpAward.user_id == User.id) & (XpAward.awarded_at >= week_start),
             )
-            .where(or_(User.id == current_user.id, User.id.in_(followed)))
+            .where(or_(User.id == current_user.id, User.id.in_(friend_ids)))
             .group_by(User.id, UserStats.id)
             .order_by(
                 func.coalesce(func.sum(XpAward.amount), 0).desc(),
@@ -259,43 +286,106 @@ async def delete_commitment(
     await cancel_commitment(commitment_id, current_user.id, db)
 
 
-@router.post("/people/{user_id}/follow", status_code=204)
-async def follow_user(
+@router.post("/people/{user_id}/friend-request", status_code=204)
+async def send_friend_request(
     user_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     if user_id == current_user.id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot follow yourself.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot add yourself.")
     if not await db.get(User, user_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
-    existing = await db.scalar(
-        select(Follow).where(Follow.follower_id == current_user.id, Follow.followed_id == user_id)
-    )
-    if not existing:
-        db.add(Follow(follower_id=current_user.id, followed_id=user_id))
-        db.add(
-            Notification(
-                kind="follow",
-                message="started following you",
-                recipient_id=user_id,
-                actor_id=current_user.id,
+    existing = await friendship_between(current_user.id, user_id, db)
+    if existing:
+        if existing.status == "accepted":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="You are already friends.")
+        if existing.requester_id == user_id:
+            existing.status = "accepted"
+            existing.responded_at = datetime.now(timezone.utc)
+            db.add(
+                Notification(
+                    kind="friend_accepted",
+                    message="accepted your friend request",
+                    recipient_id=user_id,
+                    actor_id=current_user.id,
+                    friendship_id=existing.id,
+                )
             )
+            await db.commit()
+            return
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Friend request already sent.")
+    friendship = Friendship(
+        requester_id=current_user.id,
+        addressee_id=user_id,
+        status="pending",
+    )
+    db.add(friendship)
+    await db.flush()
+    db.add(
+        Notification(
+            kind="friend_request",
+            message="sent you a friend request",
+            recipient_id=user_id,
+            actor_id=current_user.id,
+            friendship_id=friendship.id,
         )
-        await db.commit()
+    )
+    await db.commit()
 
 
-@router.delete("/people/{user_id}/follow", status_code=204)
-async def unfollow_user(
+@router.post("/friend-requests/{friendship_id}/accept", status_code=204)
+async def accept_friend_request(
+    friendship_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    friendship = await db.get(Friendship, friendship_id)
+    if (
+        not friendship
+        or friendship.addressee_id != current_user.id
+        or friendship.status != "pending"
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Friend request not found.")
+    friendship.status = "accepted"
+    friendship.responded_at = datetime.now(timezone.utc)
+    db.add(
+        Notification(
+            kind="friend_accepted",
+            message="accepted your friend request",
+            recipient_id=friendship.requester_id,
+            actor_id=current_user.id,
+            friendship_id=friendship.id,
+        )
+    )
+    await db.commit()
+
+
+@router.delete("/friend-requests/{friendship_id}", status_code=204)
+async def decline_friend_request(
+    friendship_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    friendship = await db.get(Friendship, friendship_id)
+    if not friendship or current_user.id not in {
+        friendship.requester_id,
+        friendship.addressee_id,
+    }:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Friend request not found.")
+    await db.delete(friendship)
+    await db.commit()
+
+
+@router.delete("/people/{user_id}/friendship", status_code=204)
+async def remove_friend(
     user_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    follow = await db.scalar(
-        select(Follow).where(Follow.follower_id == current_user.id, Follow.followed_id == user_id)
-    )
-    if follow:
-        await db.delete(follow)
+    friendship = await friendship_between(current_user.id, user_id, db)
+    if friendship:
+        await db.delete(friendship)
         await db.commit()
 
 
@@ -304,13 +394,13 @@ async def read_feed(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[FeedPostRead]:
-    followed = select(Follow.followed_id).where(Follow.follower_id == current_user.id)
+    friend_ids = friend_ids_query(current_user.id)
     rows = (
         await db.execute(
             select(ActivityPost, User, UserStats)
             .join(User, User.id == ActivityPost.user_id)
             .outerjoin(UserStats, UserStats.user_id == User.id)
-            .where(or_(ActivityPost.user_id == current_user.id, ActivityPost.user_id.in_(followed)))
+            .where(or_(ActivityPost.user_id == current_user.id, ActivityPost.user_id.in_(friend_ids)))
             .order_by(ActivityPost.created_at.desc())
             .limit(50)
         )
@@ -380,13 +470,11 @@ async def add_reaction(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Encouragement is reserved for other people's progress.",
         )
-    allowed = post.user_id == current_user.id or await db.scalar(
-        select(Follow.id).where(
-            Follow.follower_id == current_user.id, Follow.followed_id == post.user_id
-        )
+    allowed = post.user_id == current_user.id or await are_friends(
+        current_user.id, post.user_id, db
     )
     if not allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Follow this user to react.")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Add this person as a friend to react.")
     existing = await db.scalar(
         select(PostReaction).where(
             PostReaction.post_id == post_id, PostReaction.user_id == current_user.id
@@ -519,7 +607,7 @@ async def read_notifications(
             .outerjoin(UserStats, UserStats.user_id == User.id)
             .where(Notification.recipient_id == current_user.id)
             .order_by(Notification.created_at.desc())
-            .limit(30)
+            .limit(100)
         )
     ).all()
     return [
@@ -530,6 +618,7 @@ async def read_notifications(
             is_read=notification.is_read,
             created_at=notification.created_at,
             post_id=notification.post_id,
+            friendship_id=notification.friendship_id,
             actor=feed_author(actor, stats),
         )
         for notification, actor, stats in rows
@@ -551,6 +640,19 @@ async def mark_notifications_read(
     )
     for notification in notifications:
         notification.is_read = True
+    await db.commit()
+
+
+@router.post("/notifications/{notification_id}/read", status_code=204)
+async def mark_notification_read(
+    notification_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    notification = await db.get(Notification, notification_id)
+    if not notification or notification.recipient_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found.")
+    notification.is_read = True
     await db.commit()
 
 
@@ -580,12 +682,6 @@ async def visible_post(post_id: UUID, user_id: UUID, db: AsyncSession) -> Activi
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found.")
     if post.user_id != user_id:
-        follows = await db.scalar(
-            select(Follow.id).where(
-                Follow.follower_id == user_id,
-                Follow.followed_id == post.user_id,
-            )
-        )
-        if not follows:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Follow this user first.")
+        if not await are_friends(user_id, post.user_id, db):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Add this person as a friend first.")
     return post

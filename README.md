@@ -1,6 +1,6 @@
 # Productivity Tracker
 
-Full-stack social productivity system with tasks, profiles, XP progression, private sharing controls, follows, activity feeds, reactions, achievements, analytics, JWT auth, FastAPI, React, and PostgreSQL.
+Full-stack social productivity system with tasks, profiles, XP progression, private sharing controls, friendships, activity feeds, reactions, achievements, analytics, JWT auth, FastAPI, React, and PostgreSQL.
 
 ## Project Structure
 
@@ -42,7 +42,9 @@ hostname on port `8000`, and the backend accepts private-network browser origins
 - `GET /api/statistics/analytics`
 - `GET/PUT /api/social/profile`
 - `GET /api/social/people`
-- `POST/DELETE /api/social/people/{user_id}/follow`
+- `POST /api/social/people/{user_id}/friend-request`
+- `POST/DELETE /api/social/friend-requests/{friendship_id}`
+- `DELETE /api/social/people/{user_id}/friendship`
 - `GET /api/social/feed`
 - `GET /api/social/leaderboard`
 - `GET/POST /api/social/posts/{post_id}/comments`
@@ -100,15 +102,15 @@ Phase 1 of the social loop awards 20 XP for a task's first completion, with a 20
 
 Phase 2 adds database-configurable XP rules, daily and weekly quests, quest bonus XP, a seven-badge catalog, locked-badge progress, streak milestones, and a three-badge profile showcase. Quest rewards are idempotent per user and period, and reset naturally at the next UTC day or week.
 
-Phase 3 connects social activity back into progression. The Social page includes a follower-scoped weekly XP leaderboard, recent connection activity, and a weekly encouragement quest. Encouraging three followed-user updates awards 25 XP once per week and immediately updates progression and leaderboard position. Users cannot react to their own posts.
+Phase 3 connects social activity back into progression. The Social page includes a friend-scoped weekly XP leaderboard, recent connection activity, and a weekly encouragement quest. Encouraging three friend updates awards 25 XP once per week and immediately updates progression and leaderboard position. Users cannot react to their own posts.
 
-Phase 4 adds inline comments and an in-app notification inbox for follows, reactions, and comments. Commenting on two connection updates completes the weekly **Keep the conversation moving** quest for 20 XP. Feed access rules also apply to comments, comment authors can delete their own messages, and notifications can be marked read in one action.
+Phase 4 adds inline comments and an in-app mailbox for friend requests, reactions, comments, challenges, accountability, and group events. The Inbox supports unread filtering, individual or bulk read actions, and friend-request responses.
 
 Phase 5 introduces collaborative community challenges. Users can join time-boxed challenges where only public tasks completed after joining contribute to the shared target. When the team reaches its goal, every participant receives the challenge XP reward exactly once, and non-finishing participants receive a completion notification. Completed challenges cannot be left.
 
-Phase 6 adds one-to-one accountability commitments. Owners can invite a followed user to support an unfinished public task. The invited partner accepts or declines in Social; after acceptance, both users see the commitment and each receives a one-time 15 XP bonus when the owner completes the task. Either participant may cancel before completion, while completed commitments remain immutable.
+Phase 6 adds one-to-one accountability commitments. Owners can invite a friend to support an unfinished public task. The invited partner accepts or declines in Social; after acceptance, both users see the commitment and each receives a one-time 15 XP bonus when the owner completes the task. Either participant may cancel before completion, while completed commitments remain immutable.
 
-Group Phase 1 adds persistent group workspaces with leader and member roles. A leader can create a group, invite followed connections, copy or rotate a join code, and inspect the participant roster. Users can accept or decline direct invitations or join immediately with a code; join codes are visible only to the leader.
+Group Phase 1 adds persistent group workspaces with leader and member roles. A leader can create a group, invite friends, copy or rotate a join code, and inspect the participant roster. Users can accept or decline direct invitations or join immediately with a code; join codes are visible only to the leader.
 
 Group Phase 2 adds a shared task board. Leaders create tasks, set priority and deadlines, assign or reassign group members, update any task, and remove obsolete work. Assigned participants can move their own tasks through to-do, in-progress, and done states, while other members retain read-only visibility.
 
@@ -137,7 +139,7 @@ Demo credentials:
 - Email: `demo@example.com`
 - Password: `password123`
 
-The seeded account follows Maya and Leo and opens with public completion posts and reactions. To demo the full loop, create a task using the globe privacy control, complete it, and open **Social** to see the new post and XP progress.
+The seeded account is friends with Maya and Leo and opens with public completion posts and reactions. To demo the full loop, create a task using the globe privacy control, complete it, and open **Social** to see the new post and XP progress.
 
 For the Phase 2 demo, open **Gamification** first to see the mixed quest and badge state. Completing a public focus task advances the remaining quests, awards any earned bonus XP once, and updates the level bar and profile badge showcase.
 
@@ -149,4 +151,4 @@ For the Phase 5 demo, the seeded **Public momentum sprint** begins at 12/13 with
 
 For the Phase 6 demo, **Prepare project defense slides** is a public in-progress task with Maya already accepted as Alex's accountability partner. Complete it from Tasks or Today: Alex and Maya each receive 15 XP, Maya receives a completion notification, and the commitment moves from accepted to completed.
 
-For the group demo, Alex leads **Bachelor Project Lab** with Maya already participating. Three milestones show completed, active, and early-stage progress driven by four linked tasks. Alex can configure milestones and create, reassign, drag, update, or delete tasks; sign in as Maya to move her assigned work while seeing Alex's tasks as read-only. The leader can also copy the seeded `MOMENTUM` code, rotate it, or invite followed connections. Sign in as `leo@example.com` with the same demo password to accept the pending invitation.
+For the group demo, Alex leads **Bachelor Project Lab** with Maya already participating. Three milestones show completed, active, and early-stage progress driven by four linked tasks. Alex can configure milestones and create, reassign, drag, update, or delete tasks; sign in as Maya to move her assigned work while seeing Alex's tasks as read-only. The leader can also copy the seeded `MOMENTUM` code, rotate it, or invite friends. Sign in as `leo@example.com` with the same demo password to accept the pending invitation.

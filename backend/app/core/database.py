@@ -62,6 +62,62 @@ async def create_database_schema() -> None:
                         """
                     )
                 )
+                await conn.execute(text("DROP TABLE IF EXISTS follows"))
+                await conn.execute(
+                    text(
+                        """
+                        CREATE TABLE IF NOT EXISTS friendships (
+                            id UUID PRIMARY KEY,
+                            requester_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            addressee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            responded_at TIMESTAMPTZ,
+                            CONSTRAINT uq_friendships_pair UNIQUE (requester_id, addressee_id),
+                            CONSTRAINT ck_friendships_not_self CHECK (requester_id <> addressee_id)
+                        )
+                        """
+                    )
+                )
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_friendships_requester_id ON friendships (requester_id)"))
+                await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_friendships_addressee_id ON friendships (addressee_id)"))
+                await conn.execute(
+                    text(
+                        """
+                        DO $$
+                        BEGIN
+                            IF to_regclass('public.follows') IS NOT NULL THEN
+                                INSERT INTO friendships (
+                                    id, requester_id, addressee_id, status, created_at, responded_at
+                                )
+                                SELECT
+                                    gen_random_uuid(),
+                                    f.follower_id,
+                                    f.followed_id,
+                                    CASE WHEN reverse_follow.id IS NULL THEN 'pending' ELSE 'accepted' END,
+                                    f.created_at,
+                                    CASE WHEN reverse_follow.id IS NULL THEN NULL ELSE GREATEST(f.created_at, reverse_follow.created_at) END
+                                FROM follows f
+                                LEFT JOIN follows reverse_follow
+                                  ON reverse_follow.follower_id = f.followed_id
+                                 AND reverse_follow.followed_id = f.follower_id
+                                WHERE f.follower_id::text < f.followed_id::text OR reverse_follow.id IS NULL
+                                ON CONFLICT (requester_id, addressee_id) DO NOTHING;
+                            END IF;
+                        END
+                        $$;
+                        """
+                    )
+                )
+                await conn.execute(
+                    text(
+                        """
+                        ALTER TABLE notifications
+                        ADD COLUMN IF NOT EXISTS friendship_id UUID
+                        REFERENCES friendships(id) ON DELETE CASCADE
+                        """
+                    )
+                )
                 await conn.execute(
                     text(
                         "ALTER TABLE users ADD COLUMN IF NOT EXISTS "

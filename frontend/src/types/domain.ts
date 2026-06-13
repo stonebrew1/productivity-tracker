@@ -133,7 +133,8 @@ export type Person = {
   level: number;
   current_streak: number;
   last_active_at: string | null;
-  is_following: boolean;
+  relationship_status: "none" | "pending_sent" | "pending_received" | "friends";
+  relationship_id: string | null;
 };
 
 export type LeaderboardEntry = {
@@ -175,11 +176,12 @@ export type PostComment = {
 
 export type SocialNotification = {
   id: string;
-  kind: "follow" | "reaction" | "comment" | "challenge" | "accountability" | "group";
+  kind: "friend_request" | "friend_accepted" | "reaction" | "comment" | "challenge" | "accountability" | "group";
   message: string;
   is_read: boolean;
   created_at: string;
   post_id: string | null;
+  friendship_id: string | null;
   actor: FeedPost["author"];
 };
 
