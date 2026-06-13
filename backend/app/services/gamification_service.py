@@ -5,12 +5,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.achievement import Achievement
-from app.models.social import ActivityPost, GamificationRule, PostReaction, QuestCompletion, XpAward
+from app.models.social import ActivityPost, GamificationRule, PostComment, PostReaction, QuestCompletion, XpAward
 from app.models.task import Task, TaskStatus, TaskVisibility
 from app.models.user_stats import UserStats
 from app.schemas.gamification import BadgeProgressRead, GamificationDashboardRead, QuestRead
 from app.schemas.social import GamificationRead
 from app.services.achievement_service import BADGE_CATALOG, badge_metrics
+from app.services.challenge_service import list_challenges
 from app.services.stats_service import ensure_stats
 
 
@@ -24,6 +25,7 @@ DEFAULT_RULES = {
         "weekly_finish_5": 60,
         "weekly_share_2": 30,
         "weekly_encourage_3": 25,
+        "weekly_comment_2": 20,
     },
 }
 
@@ -67,6 +69,14 @@ QUEST_CATALOG = [
         "cadence": "weekly",
         "metric": "reactions",
         "target": 3,
+    },
+    {
+        "code": "weekly_comment_2",
+        "title": "Keep the conversation moving",
+        "description": "Comment on two connection updates this week.",
+        "cadence": "weekly",
+        "metric": "comments",
+        "target": 2,
     },
 ]
 
@@ -242,6 +252,7 @@ async def gamification_dashboard(user_id: UUID, db: AsyncSession) -> Gamificatio
         badges=badges,
         quests=quests,
         showcased_badges=[badge for badge in badges if badge.unlocked][-3:],
+        challenges=await list_challenges(user_id, db),
     )
 
 
@@ -267,6 +278,19 @@ async def quest_progress(
                 PostReaction.user_id == user_id,
                 PostReaction.created_at >= start,
                 PostReaction.created_at < end,
+            )
+        )
+        return int(count or 0)
+    if metric == "comments":
+        count = await db.scalar(
+            select(func.count())
+            .select_from(PostComment)
+            .join(ActivityPost, ActivityPost.id == PostComment.post_id)
+            .where(
+                PostComment.user_id == user_id,
+                ActivityPost.user_id != user_id,
+                PostComment.created_at >= start,
+                PostComment.created_at < end,
             )
         )
         return int(count or 0)

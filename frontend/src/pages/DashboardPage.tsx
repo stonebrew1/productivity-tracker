@@ -1,5 +1,5 @@
 import { CalendarClock, Check, Clock3, Globe2, Lock, Play, Plus, Star } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { api } from "../api/client";
 import type { Achievement, Category, Stats, Task, TaskPriority } from "../types/domain";
@@ -119,14 +119,32 @@ function QuickAdd({
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [categoryId, setCategoryId] = useState("");
   const [scheduledFor, setScheduledFor] = useState(dateKey(new Date()));
-  const [estimatedMinutes, setEstimatedMinutes] = useState(30);
+  const [estimatedMinutes, setEstimatedMinutes] = useState("30");
   const [isFocus, setIsFocus] = useState(true);
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [busy, setBusy] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!success) return;
+    const timeout = window.setTimeout(() => setSuccess(false), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [success]);
+
+  function resetForm() {
+    setTitle("");
+    setPriority("medium");
+    setCategoryId("");
+    setScheduledFor(dateKey(new Date()));
+    setEstimatedMinutes("30");
+    setIsFocus(true);
+    setVisibility("private");
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
+    setSuccess(false);
     onError(null);
     try {
       await api.createTask({
@@ -134,12 +152,13 @@ function QuickAdd({
         priority,
         category_id: categoryId || null,
         scheduled_for: `${scheduledFor}T09:00:00`,
-        estimated_minutes: estimatedMinutes,
+        estimated_minutes: estimatedMinutes === "" ? null : Number(estimatedMinutes),
         is_focus: isFocus,
         visibility
       });
-      setTitle("");
       await onChanged();
+      resetForm();
+      setSuccess(true);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Unable to add task");
     } finally {
@@ -148,58 +167,62 @@ function QuickAdd({
   }
 
   return (
-    <form className="quick-add" onSubmit={submit}>
-      <div className="quick-add-title">
-        <Plus size={18} />
+    <div className="quick-add-wrap">
+      {success && <div className="success-message" role="status"><Check size={16} />Task added successfully.</div>}
+      <form className="quick-add" onSubmit={submit}>
+        <div className="quick-add-title">
+          <Plus size={18} />
+          <input
+            aria-label="Task title"
+            placeholder="What needs your attention?"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            required
+          />
+        </div>
+        <select aria-label="Priority" value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)}>
+          <option value="high">High priority</option>
+          <option value="medium">Medium priority</option>
+          <option value="low">Low priority</option>
+        </select>
+        <select aria-label="Category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+          <option value="">No category</option>
+          {categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
+        </select>
         <input
-          aria-label="Task title"
-          placeholder="What needs your attention?"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
+          aria-label="Scheduled date"
+          type="date"
+          value={scheduledFor}
+          onChange={(event) => setScheduledFor(event.target.value)}
           required
         />
-      </div>
-      <select aria-label="Priority" value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)}>
-        <option value="high">High priority</option>
-        <option value="medium">Medium priority</option>
-        <option value="low">Low priority</option>
-      </select>
-      <select aria-label="Category" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
-        <option value="">No category</option>
-        {categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
-      </select>
-      <input
-        aria-label="Scheduled date"
-        type="date"
-        value={scheduledFor}
-        onChange={(event) => setScheduledFor(event.target.value)}
-      />
-      <label className="estimate-input">
-        <Clock3 size={15} />
-        <input
-          aria-label="Estimated minutes"
-          type="number"
-          min="5"
-          max="1440"
-          step="5"
-          value={estimatedMinutes}
-          onChange={(event) => setEstimatedMinutes(Number(event.target.value))}
-        />
-      </label>
-      <label className="focus-toggle">
-        <input type="checkbox" checked={isFocus} onChange={(event) => setIsFocus(event.target.checked)} />
-        <Star size={16} />
-      </label>
-      <label className="visibility-toggle" title={visibility === "public" ? "Shared with followers" : "Private task"}>
-        <input
-          type="checkbox"
-          checked={visibility === "public"}
-          onChange={(event) => setVisibility(event.target.checked ? "public" : "private")}
-        />
-        {visibility === "public" ? <Globe2 size={16} /> : <Lock size={16} />}
-      </label>
-      <button disabled={busy}>{busy ? "Adding..." : "Add"}</button>
-    </form>
+        <label className="estimate-input">
+          <Clock3 size={15} />
+          <input
+            aria-label="Estimated minutes"
+            type="number"
+            min="5"
+            max="1440"
+            step="5"
+            value={estimatedMinutes}
+            onChange={(event) => setEstimatedMinutes(event.target.value)}
+          />
+        </label>
+        <label className="focus-toggle">
+          <input type="checkbox" checked={isFocus} onChange={(event) => setIsFocus(event.target.checked)} />
+          <Star size={16} />
+        </label>
+        <label className="visibility-toggle" title={visibility === "public" ? "Shared with followers" : "Private task"}>
+          <input
+            type="checkbox"
+            checked={visibility === "public"}
+            onChange={(event) => setVisibility(event.target.checked ? "public" : "private")}
+          />
+          {visibility === "public" ? <Globe2 size={16} /> : <Lock size={16} />}
+        </label>
+        <button disabled={busy}>{busy ? "Adding..." : "Add"}</button>
+      </form>
+    </div>
   );
 }
 

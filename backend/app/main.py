@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import achievements, auth, categories, gamification, social, statistics, tasks
+from app.api import achievements, auth, categories, gamification, groups, social, statistics, tasks
 from app.core.config import get_settings
 from app.core.database import create_database_schema
 
@@ -26,6 +26,14 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_origin],
+    allow_origin_regex=(
+        r"^https?://("
+        r"localhost|127\.0\.0\.1|"
+        r"10(?:\.\d{1,3}){3}|"
+        r"192\.168(?:\.\d{1,3}){2}|"
+        r"172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}"
+        r")(?::\d+)?$"
+    ),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,6 +46,7 @@ app.include_router(achievements.router, prefix="/api")
 app.include_router(statistics.router, prefix="/api")
 app.include_router(social.router, prefix="/api")
 app.include_router(gamification.router, prefix="/api")
+app.include_router(groups.router, prefix="/api")
 
 
 @app.get("/health", tags=["health"])

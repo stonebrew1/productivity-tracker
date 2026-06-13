@@ -1,8 +1,8 @@
-import { CheckCircle2, Crown, Flame, Heart, Medal, Sparkles, UserMinus, UserPlus, Zap } from "lucide-react";
+import { Bell, Check, CheckCircle2, Crown, Flag, Flame, Handshake, Heart, Medal, MessageCircle, Send, Sparkles, Trash2, UserMinus, UserPlus, UsersRound, X, Zap } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { FeedPost, GamificationDashboard, LeaderboardEntry, Person, Profile } from "../types/domain";
+import type { AccountabilityCommitment, FeedPost, GamificationDashboard, LeaderboardEntry, Person, PostComment, Profile, SocialNotification } from "../types/domain";
 
 type Props = {
   onError: (message: string | null) => void;
@@ -14,21 +14,31 @@ export function SocialPage({ onError }: Props) {
   const [feed, setFeed] = useState<FeedPost[]>([]);
   const [game, setGame] = useState<GamificationDashboard | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [notifications, setNotifications] = useState<SocialNotification[]>([]);
+  const [commitments, setCommitments] = useState<AccountabilityCommitment[]>([]);
+  const [openComments, setOpenComments] = useState<string | null>(null);
+  const [comments, setComments] = useState<Record<string, PostComment[]>>({});
+  const [commentDraft, setCommentDraft] = useState("");
+  const [commentsBusy, setCommentsBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function loadSocial() {
-    const [nextProfile, nextPeople, nextFeed, nextGame, nextLeaderboard] = await Promise.all([
+    const [nextProfile, nextPeople, nextFeed, nextGame, nextLeaderboard, nextNotifications, nextCommitments] = await Promise.all([
       api.profile(),
       api.people(),
       api.feed(),
       api.gamification(),
-      api.leaderboard()
+      api.leaderboard(),
+      api.notifications(),
+      api.commitments()
     ]);
     setProfile(nextProfile);
     setPeople(nextPeople);
     setFeed(nextFeed);
     setGame(nextGame);
     setLeaderboard(nextLeaderboard);
+    setNotifications(nextNotifications);
+    setCommitments(nextCommitments);
   }
 
   useEffect(() => {
@@ -47,10 +57,58 @@ export function SocialPage({ onError }: Props) {
     }
   }
 
+  async function toggleComments(postId: string) {
+    if (openComments === postId) {
+      setOpenComments(null);
+      return;
+    }
+    setOpenComments(postId);
+    if (!comments[postId]) {
+      try {
+        const nextComments = await api.comments(postId);
+        setComments((value) => ({ ...value, [postId]: nextComments }));
+      } catch (error) {
+        onError(error instanceof Error ? error.message : "Unable to load comments");
+      }
+    }
+  }
+
+  async function submitComment(event: FormEvent, postId: string) {
+    event.preventDefault();
+    if (!commentDraft.trim()) return;
+    setCommentsBusy(true);
+    try {
+      await api.createComment(postId, commentDraft.trim());
+      setCommentDraft("");
+      const [nextComments] = await Promise.all([api.comments(postId), loadSocial()]);
+      setComments((value) => ({ ...value, [postId]: nextComments }));
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to post comment");
+    } finally {
+      setCommentsBusy(false);
+    }
+  }
+
+  async function removeComment(postId: string, commentId: string) {
+    onError(null);
+    try {
+      await api.deleteComment(commentId);
+      setComments((value) => ({
+        ...value,
+        [postId]: (value[postId] ?? []).filter((comment) => comment.id !== commentId)
+      }));
+      await loadSocial();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to delete comment");
+    }
+  }
+
   if (loading || !profile) return <p className="muted">Loading social workspace...</p>;
 
   const progress = Math.round((profile.gamification.xp_into_level / profile.gamification.xp_for_next_level) * 100);
-  const socialQuest = game?.quests.find((quest) => quest.code === "weekly_encourage_3");
+  const socialQuests = game?.quests.filter((quest) =>
+    ["weekly_encourage_3", "weekly_comment_2"].includes(quest.code)
+  ) ?? [];
   const activePeople = people
     .filter((person) => person.is_following && person.last_active_at)
     .sort((left, right) => new Date(right.last_active_at!).getTime() - new Date(left.last_active_at!).getTime())
@@ -90,8 +148,8 @@ export function SocialPage({ onError }: Props) {
 
       <div className="social-layout">
         <main className="feed-column">
-          {socialQuest && (
-            <section className={`social-quest ${socialQuest.completed ? "completed" : ""}`}>
+          {socialQuests.map((socialQuest) => (
+            <section className={`social-quest ${socialQuest.completed ? "completed" : ""}`} key={socialQuest.code}>
               <span className="social-quest-icon"><Sparkles size={18} /></span>
               <div>
                 <small>Weekly social quest</small>
@@ -102,6 +160,32 @@ export function SocialPage({ onError }: Props) {
                 <span>{socialQuest.progress} / {socialQuest.target}</span>
                 <i><b style={{ width: `${Math.round((socialQuest.progress / socialQuest.target) * 100)}%` }} /></i>
                 <small>+{socialQuest.reward_xp} XP</small>
+              </div>
+            </section>
+          ))}
+          {game && (
+            <section className="challenge-section">
+              <div className="section-heading"><h2>Community challenges</h2><span>Public completions only</span></div>
+              <div className="challenge-list">
+                {game.challenges.map((challenge) => (
+                  <article className={`challenge-card ${challenge.completed ? "completed" : ""}`} key={challenge.id}>
+                    <span className="challenge-icon"><Flag size={18} /></span>
+                    <div className="challenge-copy">
+                      <div><strong>{challenge.title}</strong><span><UsersRound size={12} />{challenge.participant_count}</span></div>
+                      <p>{challenge.description}</p>
+                      <div className="challenge-progress"><i style={{ width: `${Math.round((challenge.team_progress / challenge.target) * 100)}%` }} /></div>
+                      <small>{challenge.team_progress} / {challenge.target} team tasks · You contributed {challenge.my_progress}</small>
+                    </div>
+                    <div className="challenge-reward">
+                      <b>+{challenge.reward_xp} XP</b>
+                      {challenge.completed ? <span><Check size={13} /> Complete</span> : challenge.joined ? (
+                        <button onClick={() => mutate(() => api.leaveChallenge(challenge.id))}>Leave</button>
+                      ) : (
+                        <button onClick={() => mutate(() => api.joinChallenge(challenge.id))}>Join</button>
+                      )}
+                    </div>
+                  </article>
+                ))}
               </div>
             </section>
           )}
@@ -127,20 +211,37 @@ export function SocialPage({ onError }: Props) {
                 <p>Completed <b>{post.task_title}</b></p>
                 <small>+{post.xp_awarded} XP</small>
               </div>
-              <button
-                className={post.reacted_by_me ? "reaction active" : "reaction"}
-                disabled={post.author.id === profile.id}
-                title={post.author.id === profile.id ? "This is your update" : post.reacted_by_me ? "Remove encouragement" : "Encourage"}
-                onClick={() => mutate(() => post.reacted_by_me ? api.unreact(post.id) : api.react(post.id))}
-              >
-                <Heart size={16} />
-                {post.reactions_count}
-              </button>
+              <div className="feed-actions">
+                <button
+                  className={post.reacted_by_me ? "reaction active" : "reaction"}
+                  disabled={post.author.id === profile.id}
+                  title={post.author.id === profile.id ? "This is your update" : post.reacted_by_me ? "Remove encouragement" : "Encourage"}
+                  onClick={() => mutate(() => post.reacted_by_me ? api.unreact(post.id) : api.react(post.id))}
+                ><Heart size={16} />{post.reactions_count}</button>
+                <button className={openComments === post.id ? "comment-toggle active" : "comment-toggle"} title="Comments" onClick={() => toggleComments(post.id)}>
+                  <MessageCircle size={16} />{post.comments_count}
+                </button>
+              </div>
+              {openComments === post.id && (
+                <PostComments
+                  comments={comments[post.id]}
+                  draft={commentDraft}
+                  busy={commentsBusy}
+                  onDraft={setCommentDraft}
+                  onSubmit={(event) => submitComment(event, post.id)}
+                  onDelete={(commentId) => removeComment(post.id, commentId)}
+                />
+              )}
             </article>
           ))}
         </main>
 
         <aside className="social-aside">
+          <Commitments commitments={commitments} onMutate={mutate} />
+          <Notifications
+            notifications={notifications}
+            onRead={() => mutate(() => api.markNotificationsRead())}
+          />
           <Leaderboard entries={leaderboard} />
           <section className="active-friends">
             <div className="section-heading"><h2>Active connections</h2><span>Recent progress</span></div>
@@ -176,6 +277,101 @@ export function SocialPage({ onError }: Props) {
           </section>
         </aside>
       </div>
+    </section>
+  );
+}
+
+function Commitments({
+  commitments,
+  onMutate
+}: {
+  commitments: AccountabilityCommitment[];
+  onMutate: (action: () => Promise<unknown>) => Promise<void>;
+}) {
+  const visible = commitments.filter((item) => item.status === "pending" || item.status === "accepted");
+  return (
+    <section className="commitments-panel">
+      <div className="section-heading"><h2><Handshake size={15} /> Accountability</h2><span>{visible.length} active</span></div>
+      {visible.map((item) => {
+        const other = item.role === "owner" ? item.partner : item.owner;
+        return (
+          <div className={`commitment-row ${item.status}`} key={item.id}>
+            <Avatar name={other.display_name ?? other.email} />
+            <div>
+              <strong>{item.task_title}</strong>
+              <span>{item.role === "owner" ? `Waiting on ${other.display_name || other.email.split("@")[0]}` : `${item.owner.display_name || item.owner.email.split("@")[0]} invited you`}</span>
+              <small>Both earn +{item.bonus_xp} XP</small>
+            </div>
+            {item.status === "pending" && item.role === "partner" ? (
+              <div className="commitment-actions">
+                <button title="Accept" onClick={() => onMutate(() => api.acceptCommitment(item.id))}><Check size={14} /></button>
+                <button title="Decline" onClick={() => onMutate(() => api.declineCommitment(item.id))}><X size={14} /></button>
+              </div>
+            ) : (
+              <button className="cancel-commitment" title="Cancel commitment" onClick={() => onMutate(() => api.cancelCommitment(item.id))}><X size={14} /></button>
+            )}
+          </div>
+        );
+      })}
+      {visible.length === 0 && <p className="muted compact-copy">Invite a connection from a public task.</p>}
+    </section>
+  );
+}
+
+function PostComments({
+  comments,
+  draft,
+  busy,
+  onDraft,
+  onSubmit,
+  onDelete
+}: {
+  comments: PostComment[] | undefined;
+  draft: string;
+  busy: boolean;
+  onDraft: (value: string) => void;
+  onSubmit: (event: FormEvent) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <section className="post-comments">
+      {!comments ? <p className="muted compact-copy">Loading comments...</p> : comments.map((comment) => (
+        <div className="comment-row" key={comment.id}>
+          <Avatar name={comment.author.display_name ?? comment.author.email} />
+          <div><strong>{comment.author.display_name || comment.author.email.split("@")[0]}</strong><p>{comment.content}</p><time>{relativeTime(comment.created_at)}</time></div>
+          {comment.can_delete && <button title="Delete comment" onClick={() => onDelete(comment.id)}><Trash2 size={14} /></button>}
+        </div>
+      ))}
+      {comments?.length === 0 && <p className="muted compact-copy">No comments yet. Start the conversation.</p>}
+      <form className="comment-form" onSubmit={onSubmit}>
+        <input maxLength={280} placeholder="Write a useful encouragement..." value={draft} onChange={(event) => onDraft(event.target.value)} />
+        <button title="Post comment" disabled={busy || !draft.trim()}><Send size={15} /></button>
+      </form>
+    </section>
+  );
+}
+
+function Notifications({
+  notifications,
+  onRead
+}: {
+  notifications: SocialNotification[];
+  onRead: () => Promise<void>;
+}) {
+  const unread = notifications.filter((notification) => !notification.is_read).length;
+  return (
+    <section className="notifications-panel">
+      <div className="section-heading">
+        <h2><Bell size={15} /> Notifications {unread > 0 && <b>{unread}</b>}</h2>
+        {unread > 0 && <button title="Mark all read" onClick={onRead}><Check size={15} /></button>}
+      </div>
+      {notifications.slice(0, 5).map((notification) => (
+        <div className={`notification-row ${notification.is_read ? "" : "unread"}`} key={notification.id}>
+          <Avatar name={notification.actor.display_name ?? notification.actor.email} />
+          <p><strong>{notification.actor.display_name || notification.actor.email.split("@")[0]}</strong> {notification.message}<time>{relativeTime(notification.created_at)}</time></p>
+        </div>
+      ))}
+      {notifications.length === 0 && <p className="muted compact-copy">No notifications yet.</p>}
     </section>
   );
 }

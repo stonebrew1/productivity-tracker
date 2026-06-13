@@ -8,7 +8,20 @@ from app.core.database import AsyncSessionLocal, create_database_schema
 from app.core.security import hash_password
 from app.models.achievement import Achievement
 from app.models.category import Category
-from app.models.social import ActivityPost, Follow, GamificationRule, PostReaction, QuestCompletion, XpAward
+from app.models.group import GroupInvitation, GroupMember, GroupMilestone, GroupTask, ProductivityGroup
+from app.models.social import (
+    ActivityPost,
+    AccountabilityCommitment,
+    Challenge,
+    ChallengeMember,
+    Follow,
+    GamificationRule,
+    Notification,
+    PostComment,
+    PostReaction,
+    QuestCompletion,
+    XpAward,
+)
 from app.models.task import Task, TaskPriority, TaskStatus, TaskVisibility
 from app.models.task_event import TaskEvent, TaskEventType
 from app.models.user import User
@@ -106,6 +119,42 @@ async def seed_demo() -> None:
 
         seeded_users = [user, *peers]
         seeded_user_ids = [item.id for item in seeded_users]
+        seeded_group_ids = list(
+            await db.scalars(
+                select(ProductivityGroup.id).where(ProductivityGroup.leader_id.in_(seeded_user_ids))
+            )
+        )
+        if seeded_group_ids:
+            await db.execute(delete(GroupTask).where(GroupTask.group_id.in_(seeded_group_ids)))
+            await db.execute(
+                delete(GroupMilestone).where(GroupMilestone.group_id.in_(seeded_group_ids))
+            )
+            await db.execute(
+                delete(GroupInvitation).where(GroupInvitation.group_id.in_(seeded_group_ids))
+            )
+            await db.execute(delete(GroupMember).where(GroupMember.group_id.in_(seeded_group_ids)))
+            await db.execute(
+                delete(ProductivityGroup).where(ProductivityGroup.id.in_(seeded_group_ids))
+            )
+        await db.execute(
+            delete(AccountabilityCommitment).where(
+                or_(
+                    AccountabilityCommitment.owner_id.in_(seeded_user_ids),
+                    AccountabilityCommitment.partner_id.in_(seeded_user_ids),
+                )
+            )
+        )
+        await db.execute(delete(ChallengeMember).where(ChallengeMember.user_id.in_(seeded_user_ids)))
+        await db.execute(delete(Challenge))
+        await db.execute(
+            delete(Notification).where(
+                or_(
+                    Notification.recipient_id.in_(seeded_user_ids),
+                    Notification.actor_id.in_(seeded_user_ids),
+                )
+            )
+        )
+        await db.execute(delete(PostComment).where(PostComment.user_id.in_(seeded_user_ids)))
         await db.execute(delete(PostReaction).where(PostReaction.user_id.in_(seeded_user_ids)))
         await db.execute(delete(ActivityPost).where(ActivityPost.user_id.in_(seeded_user_ids)))
         await db.execute(
@@ -215,6 +264,7 @@ async def seed_demo() -> None:
                 )
             )
 
+        open_tasks_created: list[Task] = []
         for index, (
             title,
             category_name,
@@ -238,11 +288,13 @@ async def seed_demo() -> None:
                 scheduled_for=scheduled_for,
                 estimated_minutes=estimated_minutes,
                 is_focus=is_focus,
+                visibility=TaskVisibility.PUBLIC if index == 0 else TaskVisibility.PRIVATE,
                 user_id=user.id,
                 category_id=category.id,
             )
             db.add(task)
             await db.flush()
+            open_tasks_created.append(task)
             db.add(
                 TaskEvent(
                     event_type=TaskEventType.CREATED,
@@ -413,12 +465,221 @@ async def seed_demo() -> None:
                 PostReaction(post_id=demo_posts[1].id, user_id=peers[0].id),
             ]
         )
+        db.add_all(
+            [
+                PostComment(
+                    post_id=peer_posts[1].id,
+                    user_id=user.id,
+                    content="The consistency is showing. Nice work keeping the practice loop moving.",
+                    created_at=now - timedelta(hours=2),
+                ),
+                PostComment(
+                    post_id=demo_posts[0].id,
+                    user_id=peers[0].id,
+                    content="This is a strong milestone for the project. Keep the next step just as concrete.",
+                    created_at=now - timedelta(hours=1, minutes=20),
+                ),
+                PostComment(
+                    post_id=demo_posts[1].id,
+                    user_id=peers[1].id,
+                    content="Great progress. The steady pace is doing the heavy lifting here.",
+                    created_at=now - timedelta(minutes=45),
+                ),
+                Notification(
+                    kind="comment",
+                    message=f"commented on your completion of {demo_posts[0].task_title}",
+                    recipient_id=user.id,
+                    actor_id=peers[0].id,
+                    post_id=demo_posts[0].id,
+                    created_at=now - timedelta(hours=1, minutes=20),
+                ),
+                Notification(
+                    kind="comment",
+                    message=f"commented on your completion of {demo_posts[1].task_title}",
+                    recipient_id=user.id,
+                    actor_id=peers[1].id,
+                    post_id=demo_posts[1].id,
+                    created_at=now - timedelta(minutes=45),
+                ),
+                Notification(
+                    kind="reaction",
+                    message=f"encouraged your completion of {demo_posts[0].task_title}",
+                    recipient_id=user.id,
+                    actor_id=peers[1].id,
+                    post_id=demo_posts[0].id,
+                    is_read=True,
+                    created_at=now - timedelta(hours=3),
+                ),
+            ]
+        )
+        challenge_start = now - timedelta(days=7)
+        challenge_end = now + timedelta(days=7)
+        momentum_challenge = Challenge(
+            code="public_momentum_sprint",
+            title="Public momentum sprint",
+            description="Complete 13 public tasks together before the sprint closes.",
+            target=13,
+            reward_xp=40,
+            starts_at=challenge_start,
+            ends_at=challenge_end,
+        )
+        focus_relay = Challenge(
+            code="community_finish_line",
+            title="Community finish line",
+            description="Join the circle and help complete eight public tasks as a team.",
+            target=8,
+            reward_xp=30,
+            starts_at=challenge_start,
+            ends_at=challenge_end,
+        )
+        db.add_all([momentum_challenge, focus_relay])
+        await db.flush()
+        db.add_all(
+            [
+                ChallengeMember(
+                    challenge_id=momentum_challenge.id,
+                    user_id=member.id,
+                    joined_at=challenge_start,
+                )
+                for member in seeded_users
+            ]
+            + [
+                ChallengeMember(
+                    challenge_id=focus_relay.id,
+                    user_id=peer.id,
+                    joined_at=challenge_start,
+                )
+                for peer in peers
+            ]
+        )
+        db.add(
+            AccountabilityCommitment(
+                task_id=open_tasks_created[0].id,
+                owner_id=user.id,
+                partner_id=peers[0].id,
+                status="accepted",
+                responded_at=now - timedelta(hours=3),
+                created_at=now - timedelta(hours=5),
+            )
+        )
+        demo_group = ProductivityGroup(
+            name="Bachelor Project Lab",
+            description="A shared workspace for planning, building, and preparing the project defense.",
+            invite_code="MOMENTUM",
+            leader_id=user.id,
+            created_at=now - timedelta(days=12),
+        )
+        db.add(demo_group)
+        await db.flush()
+        scope_milestone = GroupMilestone(
+            group_id=demo_group.id,
+            title="Scope approved",
+            description="Research question, project boundaries, and evaluation criteria are agreed.",
+            target_date=now - timedelta(days=5),
+            created_at=now - timedelta(days=12),
+        )
+        prototype_milestone = GroupMilestone(
+            group_id=demo_group.id,
+            title="Prototype validation ready",
+            description="Architecture and usability materials are ready for the validation session.",
+            target_date=now + timedelta(days=5),
+            created_at=now - timedelta(days=6),
+        )
+        defense_milestone = GroupMilestone(
+            group_id=demo_group.id,
+            title="Defense preparation complete",
+            description="Questions, slides, and final demonstration are rehearsed.",
+            target_date=now + timedelta(days=14),
+            created_at=now - timedelta(days=2),
+        )
+        db.add_all([scope_milestone, prototype_milestone, defense_milestone])
+        await db.flush()
+        db.add_all(
+            [
+                GroupMember(
+                    group_id=demo_group.id,
+                    user_id=user.id,
+                    role="leader",
+                    joined_at=demo_group.created_at,
+                ),
+                GroupMember(
+                    group_id=demo_group.id,
+                    user_id=peers[0].id,
+                    role="member",
+                    joined_at=now - timedelta(days=9),
+                ),
+                GroupInvitation(
+                    group_id=demo_group.id,
+                    invited_user_id=peers[1].id,
+                    invited_by_id=user.id,
+                    created_at=now - timedelta(hours=8),
+                ),
+                Notification(
+                    kind="group",
+                    message=f"invited you to join {demo_group.name}",
+                    recipient_id=peers[1].id,
+                    actor_id=user.id,
+                    created_at=now - timedelta(hours=8),
+                ),
+                GroupTask(
+                    group_id=demo_group.id,
+                    title="Approve project scope",
+                    description="Confirm the final research question and success criteria.",
+                    priority=TaskPriority.HIGH,
+                    status=TaskStatus.DONE,
+                    deadline=now - timedelta(days=5),
+                    completed_at=now - timedelta(days=6),
+                    assigned_to_id=user.id,
+                    created_by_id=user.id,
+                    milestone_id=scope_milestone.id,
+                    created_at=now - timedelta(days=11),
+                ),
+                GroupTask(
+                    group_id=demo_group.id,
+                    title="Prepare usability test script",
+                    description="Write the five moderated testing prompts for the prototype.",
+                    priority=TaskPriority.HIGH,
+                    status=TaskStatus.IN_PROGRESS,
+                    deadline=now + timedelta(days=2),
+                    assigned_to_id=peers[0].id,
+                    created_by_id=user.id,
+                    milestone_id=prototype_milestone.id,
+                    created_at=now - timedelta(days=4),
+                ),
+                GroupTask(
+                    group_id=demo_group.id,
+                    title="Review architecture diagram",
+                    description="Check service boundaries and database relationships.",
+                    priority=TaskPriority.MEDIUM,
+                    status=TaskStatus.DONE,
+                    deadline=now + timedelta(days=4),
+                    completed_at=now - timedelta(hours=14),
+                    assigned_to_id=user.id,
+                    created_by_id=user.id,
+                    milestone_id=prototype_milestone.id,
+                    created_at=now - timedelta(days=2),
+                ),
+                GroupTask(
+                    group_id=demo_group.id,
+                    title="Collect defense questions",
+                    description="Add likely examiner questions to the shared preparation list.",
+                    priority=TaskPriority.LOW,
+                    status=TaskStatus.TODO,
+                    deadline=now + timedelta(days=7),
+                    assigned_to_id=peers[0].id,
+                    created_by_id=user.id,
+                    milestone_id=defense_milestone.id,
+                    created_at=now - timedelta(days=1),
+                ),
+            ]
+        )
         await db.commit()
 
     print(
         f"Seeded {DEMO_EMAIL}: {len(TASK_BLUEPRINTS)} completed tasks, "
         f"{len(OPEN_TASKS)} active tasks, 3 deleted-task histories, gamification progress, "
-        f"and {len(SOCIAL_USERS)} social demo users."
+        f"{len(SOCIAL_USERS)} social demo users, 2 collaborative challenges, "
+        "1 accepted accountability commitment, and 1 group workspace with 3 milestones and 4 shared tasks."
     )
 
 

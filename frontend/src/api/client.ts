@@ -1,20 +1,35 @@
 import type {
   Achievement,
+  AccountabilityCommitment,
   AnalyticsInterval,
   AnalyticsReport,
   Category,
+  Challenge,
   FeedPost,
   GamificationDashboard,
+  GroupActivity,
+  GroupActivityComment,
+  GroupAnalytics,
+  GroupChallenge,
+  GroupInvitation,
+  GroupMilestone,
+  GroupProgress,
+  GroupTask,
   LeaderboardEntry,
   Person,
+  PostComment,
   Profile,
+  ProductivityGroup,
+  SocialNotification,
   Stats,
   Task,
   TokenResponse,
   User
 } from "../types/domain";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
+const API_URL =
+  import.meta.env.VITE_API_URL ??
+  `${window.location.protocol}//${window.location.hostname}:8000/api`;
 const ACCESS_TOKEN_KEY = "productivity_access_token";
 const REFRESH_TOKEN_KEY = "productivity_refresh_token";
 
@@ -82,11 +97,114 @@ export const api = {
     request<Profile>("/social/profile", { method: "PUT", body: JSON.stringify(payload) }),
   people: () => request<Person[]>("/social/people"),
   leaderboard: () => request<LeaderboardEntry[]>("/social/leaderboard"),
+  challenges: () => request<Challenge[]>("/social/challenges"),
+  joinChallenge: (id: string) => request<Challenge>(`/social/challenges/${id}/join`, { method: "POST" }),
+  leaveChallenge: (id: string) => request<void>(`/social/challenges/${id}/join`, { method: "DELETE" }),
   follow: (id: string) => request<void>(`/social/people/${id}/follow`, { method: "POST" }),
   unfollow: (id: string) => request<void>(`/social/people/${id}/follow`, { method: "DELETE" }),
   feed: () => request<FeedPost[]>("/social/feed"),
+  comments: (postId: string) => request<PostComment[]>(`/social/posts/${postId}/comments`),
+  createComment: (postId: string, content: string) =>
+    request<PostComment>(`/social/posts/${postId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content })
+    }),
+  deleteComment: (id: string) => request<void>(`/social/comments/${id}`, { method: "DELETE" }),
   react: (id: string) => request<void>(`/social/posts/${id}/reaction`, { method: "POST" }),
   unreact: (id: string) => request<void>(`/social/posts/${id}/reaction`, { method: "DELETE" }),
+  notifications: () => request<SocialNotification[]>("/social/notifications"),
+  markNotificationsRead: () => request<void>("/social/notifications/read", { method: "POST" }),
+  commitments: () => request<AccountabilityCommitment[]>("/social/commitments"),
+  inviteAccountability: (taskId: string, partnerId: string) =>
+    request<AccountabilityCommitment>(`/social/tasks/${taskId}/accountability`, {
+      method: "POST",
+      body: JSON.stringify({ partner_id: partnerId })
+    }),
+  acceptCommitment: (id: string) =>
+    request<AccountabilityCommitment>(`/social/commitments/${id}/accept`, { method: "POST" }),
+  declineCommitment: (id: string) =>
+    request<AccountabilityCommitment>(`/social/commitments/${id}/decline`, { method: "POST" }),
+  cancelCommitment: (id: string) => request<void>(`/social/commitments/${id}`, { method: "DELETE" }),
+  groups: () => request<ProductivityGroup[]>("/groups"),
+  createGroup: (payload: { name: string; description?: string | null }) =>
+    request<ProductivityGroup>("/groups", { method: "POST", body: JSON.stringify(payload) }),
+  joinGroup: (inviteCode: string) =>
+    request<ProductivityGroup>("/groups/join", {
+      method: "POST",
+      body: JSON.stringify({ invite_code: inviteCode })
+    }),
+  groupInvitations: () => request<GroupInvitation[]>("/groups/invitations"),
+  inviteGroupMember: (groupId: string, userId: string) =>
+    request<void>(`/groups/${groupId}/invitations`, {
+      method: "POST",
+      body: JSON.stringify({ user_id: userId })
+    }),
+  acceptGroupInvitation: (id: string) =>
+    request<void>(`/groups/invitations/${id}/accept`, { method: "POST" }),
+  declineGroupInvitation: (id: string) =>
+    request<void>(`/groups/invitations/${id}/decline`, { method: "POST" }),
+  rotateGroupCode: (id: string) =>
+    request<ProductivityGroup>(`/groups/${id}/invite-code`, { method: "POST" }),
+  groupTasks: (groupId: string) => request<GroupTask[]>(`/groups/${groupId}/tasks`),
+  groupProgress: (groupId: string) => request<GroupProgress>(`/groups/${groupId}/progress`),
+  groupActivity: (groupId: string) => request<GroupActivity[]>(`/groups/${groupId}/activity`),
+  groupAnalytics: (groupId: string) => request<GroupAnalytics>(`/groups/${groupId}/analytics`),
+  groupChallenges: (groupId: string) => request<GroupChallenge[]>(`/groups/${groupId}/challenges`),
+  createGroupChallenge: (groupId: string, payload: { title: string; description?: string | null; target: number; reward_xp: number; ends_at: string }) =>
+    request<GroupChallenge>(`/groups/${groupId}/challenges`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+  deleteGroupChallenge: (challengeId: string) =>
+    request<void>(`/groups/challenges/${challengeId}`, { method: "DELETE" }),
+  createGroupUpdate: (groupId: string, content: string) =>
+    request<GroupActivity>(`/groups/${groupId}/activity`, {
+      method: "POST",
+      body: JSON.stringify({ content })
+    }),
+  createGroupActivityComment: (activityId: string, content: string) =>
+    request<GroupActivityComment>(`/groups/activity/${activityId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ content })
+    }),
+  deleteGroupActivityComment: (commentId: string) =>
+    request<void>(`/groups/activity/comments/${commentId}`, { method: "DELETE" }),
+  recognizeGroupActivity: (activityId: string) =>
+    request<GroupActivity>(`/groups/activity/${activityId}/recognition`, { method: "POST" }),
+  removeGroupActivityRecognition: (activityId: string) =>
+    request<void>(`/groups/activity/${activityId}/recognition`, { method: "DELETE" }),
+  createGroupTask: (groupId: string, payload: {
+    title: string;
+    description?: string | null;
+    priority: "low" | "medium" | "high";
+    deadline?: string | null;
+    assigned_to_id: string;
+    milestone_id?: string | null;
+  }) => request<GroupTask>(`/groups/${groupId}/tasks`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  }),
+  updateGroupTask: (taskId: string, payload: Partial<Pick<GroupTask, "title" | "description" | "priority" | "status" | "deadline" | "assigned_to_id" | "milestone_id">>) =>
+    request<GroupTask>(`/groups/tasks/${taskId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }),
+  deleteGroupTask: (taskId: string) =>
+    request<void>(`/groups/tasks/${taskId}`, { method: "DELETE" }),
+  groupMilestones: (groupId: string) =>
+    request<GroupMilestone[]>(`/groups/${groupId}/milestones`),
+  createGroupMilestone: (groupId: string, payload: { title: string; description?: string | null; target_date?: string | null }) =>
+    request<GroupMilestone>(`/groups/${groupId}/milestones`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }),
+  updateGroupMilestone: (milestoneId: string, payload: { title?: string; description?: string | null; target_date?: string | null }) =>
+    request<GroupMilestone>(`/groups/milestones/${milestoneId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }),
+  deleteGroupMilestone: (milestoneId: string) =>
+    request<void>(`/groups/milestones/${milestoneId}`, { method: "DELETE" }),
   analytics: (dateFrom: string, dateTo: string, interval: AnalyticsInterval) => {
     const params = new URLSearchParams({
       date_from: dateFrom,

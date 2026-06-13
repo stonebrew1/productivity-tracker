@@ -1,16 +1,17 @@
-import { BarChart3, CheckSquare2, Flame, Home, LogOut, Trophy, Users, Zap } from "lucide-react";
+import { BarChart3, CheckSquare2, Flame, Home, LogOut, Trophy, Users, UsersRound, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { api, clearTokens, getAccessToken, setTokens } from "./api/client";
 import { AchievementsPage } from "./pages/AchievementsPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { GroupsPage } from "./pages/GroupsPage";
 import { StatisticsPage } from "./pages/StatisticsPage";
 import { SocialPage } from "./pages/SocialPage";
 import { TasksPage } from "./pages/TasksPage";
 import type { Achievement, Category, Stats, Task, User } from "./types/domain";
 
-type View = "dashboard" | "tasks" | "social" | "achievements" | "statistics";
+type View = "dashboard" | "tasks" | "social" | "groups" | "achievements" | "statistics";
 
 export function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -75,6 +76,7 @@ export function App() {
     { id: "dashboard" as View, label: "Today", icon: Home },
     { id: "tasks" as View, label: "Tasks", icon: CheckSquare2 },
     { id: "social" as View, label: "Social", icon: Users },
+    { id: "groups" as View, label: "Groups", icon: UsersRound },
     { id: "achievements" as View, label: "Progress", icon: Trophy },
     { id: "statistics" as View, label: "Statistics", icon: BarChart3 }
   ];
@@ -150,6 +152,7 @@ export function App() {
               />
             )}
             {view === "social" && <SocialPage onError={setError} />}
+            {view === "groups" && <GroupsPage onError={setError} />}
             {view === "achievements" && <AchievementsPage onError={setError} />}
             {view === "statistics" && <StatisticsPage stats={stats} />}
           </div>

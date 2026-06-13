@@ -22,6 +22,10 @@ Then open:
 - API docs: http://localhost:8000/docs
 - Health check: http://localhost:8000/health
 
+To access the app from another device on the same local network, open
+`http://<computer-ip>:5173`. The frontend resolves its API through the same
+hostname on port `8000`, and the backend accepts private-network browser origins.
+
 ## Main API Areas
 
 - `POST /api/auth/register`
@@ -39,7 +43,26 @@ Then open:
 - `POST/DELETE /api/social/people/{user_id}/follow`
 - `GET /api/social/feed`
 - `GET /api/social/leaderboard`
+- `GET/POST /api/social/posts/{post_id}/comments`
+- `DELETE /api/social/comments/{comment_id}`
+- `GET /api/social/notifications`
+- `POST /api/social/notifications/read`
+- `GET /api/social/challenges`
+- `POST/DELETE /api/social/challenges/{challenge_id}/join`
+- `GET /api/social/commitments`
+- `POST /api/social/tasks/{task_id}/accountability`
+- `POST /api/social/commitments/{commitment_id}/accept`
+- `POST /api/social/commitments/{commitment_id}/decline`
 - `POST/DELETE /api/social/posts/{post_id}/reaction`
+- `GET/POST /api/groups`
+- `POST /api/groups/join`
+- `GET /api/groups/invitations`
+- `POST /api/groups/{group_id}/invitations`
+- `POST /api/groups/{group_id}/invite-code`
+- `GET/POST /api/groups/{group_id}/tasks`
+- `PUT/DELETE /api/groups/tasks/{task_id}`
+- `GET/POST /api/groups/{group_id}/milestones`
+- `PUT/DELETE /api/groups/milestones/{milestone_id}`
 - `GET /api/gamification`
 
 ## Notes
@@ -55,6 +78,18 @@ Phase 1 of the social loop awards 20 XP for a task's first completion, with a 20
 Phase 2 adds database-configurable XP rules, daily and weekly quests, quest bonus XP, a seven-badge catalog, locked-badge progress, streak milestones, and a three-badge profile showcase. Quest rewards are idempotent per user and period, and reset naturally at the next UTC day or week.
 
 Phase 3 connects social activity back into progression. The Social page includes a follower-scoped weekly XP leaderboard, recent connection activity, and a weekly encouragement quest. Encouraging three followed-user updates awards 25 XP once per week and immediately updates progression and leaderboard position. Users cannot react to their own posts.
+
+Phase 4 adds inline comments and an in-app notification inbox for follows, reactions, and comments. Commenting on two connection updates completes the weekly **Keep the conversation moving** quest for 20 XP. Feed access rules also apply to comments, comment authors can delete their own messages, and notifications can be marked read in one action.
+
+Phase 5 introduces collaborative community challenges. Users can join time-boxed challenges where only public tasks completed after joining contribute to the shared target. When the team reaches its goal, every participant receives the challenge XP reward exactly once, and non-finishing participants receive a completion notification. Completed challenges cannot be left.
+
+Phase 6 adds one-to-one accountability commitments. Owners can invite a followed user to support an unfinished public task. The invited partner accepts or declines in Social; after acceptance, both users see the commitment and each receives a one-time 15 XP bonus when the owner completes the task. Either participant may cancel before completion, while completed commitments remain immutable.
+
+Group Phase 1 adds persistent group workspaces with leader and member roles. A leader can create a group, invite followed connections, copy or rotate a join code, and inspect the participant roster. Users can accept or decline direct invitations or join immediately with a code; join codes are visible only to the leader.
+
+Group Phase 2 adds a shared task board. Leaders create tasks, set priority and deadlines, assign or reassign group members, update any task, and remove obsolete work. Assigned participants can move their own tasks through to-do, in-progress, and done states, while other members retain read-only visibility.
+
+Group Phase 3 adds leader-configured milestones. Shared tasks can be linked or moved between milestones, and progress is derived automatically from the linked tasks' completion state. Deleting a milestone preserves its tasks and returns them to the unlinked pool.
 
 The backend currently creates new tables automatically on startup. Moving all schema changes to Alembic migrations is the next infrastructure milestone.
 
@@ -84,3 +119,11 @@ The seeded account follows Maya and Leo and opens with public completion posts a
 For the Phase 2 demo, open **Gamification** first to see the mixed quest and badge state. Completing a public focus task advances the remaining quests, awards any earned bonus XP once, and updates the level bar and profile badge showcase.
 
 For the Phase 3 demo, open **Social** and note the weekly leaderboard and the partially completed **Lift the circle** quest. Encourage an unreacted Maya or Leo update to complete the quest, then observe the awarded XP in Progression and the refreshed weekly ranking.
+
+For the Phase 4 demo, the seeded account begins with one of two required comments and two unread notifications. Expand a Maya or Leo post, add one constructive comment, and observe the quest complete, the 20 XP award, the updated leaderboard, and the new notification on the post owner's account.
+
+For the Phase 5 demo, the seeded **Public momentum sprint** begins at 12/13 with Alex, Maya, and Leo participating. Create and complete one public task to finish the team target. All three participants receive 40 XP once, the Social challenge card becomes complete, and the result appears under Team challenges in Progression. A second 6/8 challenge remains available to join.
+
+For the Phase 6 demo, **Prepare project defense slides** is a public in-progress task with Maya already accepted as Alex's accountability partner. Complete it from Tasks or Today: Alex and Maya each receive 15 XP, Maya receives a completion notification, and the commitment moves from accepted to completed.
+
+For the group demo, Alex leads **Bachelor Project Lab** with Maya already participating. Three milestones show completed, active, and early-stage progress driven by four linked tasks. Alex can configure milestones and create, reassign, drag, update, or delete tasks; sign in as Maya to move her assigned work while seeing Alex's tasks as read-only. The leader can also copy the seeded `MOMENTUM` code, rotate it, or invite followed connections. Sign in as `leo@example.com` with the same demo password to accept the pending invitation.
