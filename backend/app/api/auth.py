@@ -7,6 +7,7 @@ from app.models.user import User
 from app.core.config import get_settings
 from app.schemas.auth import (
     EmailVerificationRequest,
+    EmailVerificationCodeRequest,
     LoginRequest,
     MessageResponse,
     RegisterRequest,
@@ -18,6 +19,7 @@ from app.schemas.user import UserRead
 from app.services.auth_service import (
     IssuedSession,
     confirm_email,
+    confirm_email_code,
     login,
     logout_session,
     refresh_session,
@@ -55,6 +57,14 @@ async def verify_email(
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
     return await confirm_email(payload.token, db)
+
+
+@router.post("/verify-email-code", response_model=MessageResponse)
+async def verify_email_code(
+    payload: EmailVerificationCodeRequest,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    return await confirm_email_code(str(payload.email), payload.code, db)
 
 
 @router.post("/resend-verification", response_model=MessageResponse)

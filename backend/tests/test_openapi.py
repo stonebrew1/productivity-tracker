@@ -7,6 +7,7 @@ def test_openapi_schema_includes_analytics_route() -> None:
     assert "/api/auth/refresh" in schema["paths"]
     assert "/api/auth/logout" in schema["paths"]
     assert "/api/auth/verify-email" in schema["paths"]
+    assert "/api/auth/verify-email-code" in schema["paths"]
     assert "/api/auth/resend-verification" in schema["paths"]
     assert "/api/statistics/analytics" in schema["paths"]
     assert "/api/social/feed" in schema["paths"]

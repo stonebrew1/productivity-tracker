@@ -174,7 +174,7 @@ p { color: var(--muted); line-height: 1.6; }
 .password-requirements { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px 10px; margin-top: -9px; }
 .password-requirements span { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: .61rem; }
 .password-requirements span.met { color: var(--emerald); }
-.verification-prompt { display: grid; justify-items: start; gap: 12px; }
+.verification-prompt { display: grid; justify-items: center; gap: 12px; text-align: center; }
 .verification-prompt > span, .verification-state { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 8px; background: var(--violet-dim); color: #a78bfa; }
 .verification-prompt h2 { margin: 4px 0 0; font-size: 1.7rem; }
 .verification-prompt p { margin: 0; font-size: .83rem; }
@@ -187,6 +187,12 @@ p { color: var(--muted); line-height: 1.6; }
 }
 .verification-resend:hover { border-color: var(--violet-light); background: rgba(124,58,237,.24); color: white; }
 .verification-prompt > .text-button { justify-self: center; }
+.verification-divider { display: flex; width: 100%; align-items: center; gap: 10px; color: var(--muted); font-size: .6rem; text-transform: uppercase; }
+.verification-divider::before, .verification-divider::after { height: 1px; flex: 1; background: var(--border); content: ""; }
+.verification-code-form { display: grid; width: 100%; grid-template-columns: minmax(0,1fr) auto; gap: 8px; }
+.verification-code-form input { min-height: 42px; letter-spacing: .28rem; text-align: center; font-size: .9rem; font-weight: 700; }
+.verification-code-form button { min-height: 42px; padding-inline: 14px; font-size: .7rem; }
+.verification-success { width: 100%; border: 1px solid rgba(16,185,129,.28); border-radius: 7px; background: rgba(16,185,129,.08); color: var(--emerald); padding: 10px 12px; font-size: .7rem; }
 .verification-screen { display: grid; min-height: 100vh; place-items: center; align-content: center; gap: 35px; padding: 24px; }
 .verification-screen > .brand { position: absolute; top: 28px; left: 30px; }
 .verification-screen section { display: grid; width: min(440px,100%); justify-items: center; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); padding: 34px; text-align: center; }
@@ -805,6 +811,8 @@ p { color: var(--muted); line-height: 1.6; }
 }
 
 @media (max-width: 720px) {
+  .verification-code-form { grid-template-columns: 1fr; }
+  .verification-code-form button { width: 100%; }
   .auth-screen { grid-template-columns: 1fr; }
   .auth-story { display: none; }
   .auth-mobile-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 60px; }

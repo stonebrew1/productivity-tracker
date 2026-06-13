@@ -1,6 +1,7 @@
 import { Check, CheckCircle2, Flame, KeyRound, Mail, Trophy, UserRound, Users, Zap } from "lucide-react";
 import { FormEvent, useState } from "react";
 
+import { api } from "../api/client";
 import type { RegistrationResponse } from "../types/domain";
 
 type Props = {
@@ -25,6 +26,8 @@ export function AuthPage({ onLogin, onRegister, onResend, error, setError }: Pro
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isRegister, setIsRegister] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
   const [registration, setRegistration] = useState<RegistrationResponse | null>(null);
   const strength = passwordChecks.filter(([, check]) => check(password)).length;
   const developmentVerificationUrl = registration?.verification_url
@@ -59,8 +62,25 @@ export function AuthPage({ onLogin, onRegister, onResend, error, setError }: Pro
     try {
       const result = await onResend(registration?.email ?? email);
       setRegistration((current) => current ? { ...current, ...result } : current);
+      setVerificationMessage("A new link and code were sent.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to resend verification email");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmCode(event: FormEvent) {
+    event.preventDefault();
+    if (!registration || verificationCode.length !== 6) return;
+    setBusy(true);
+    setError(null);
+    setVerificationMessage(null);
+    try {
+      const result = await api.verifyEmailCode(registration.email, verificationCode);
+      setVerificationMessage(result.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to confirm code");
     } finally {
       setBusy(false);
     }
@@ -101,6 +121,23 @@ export function AuthPage({ onLogin, onRegister, onResend, error, setError }: Pro
             <h2>Check your email</h2>
             <p>We sent a confirmation link to <strong>{registration.email}</strong>. Confirm it before signing in.</p>
             {developmentVerificationUrl && <a href={developmentVerificationUrl}>Open development verification link</a>}
+            <div className="verification-divider"><span>or enter the code</span></div>
+            <form className="verification-code-form" onSubmit={confirmCode}>
+              <input
+                aria-label="Six digit confirmation code"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                maxLength={6}
+                pattern="\d{6}"
+                placeholder="000000"
+                value={verificationCode}
+                onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              />
+              <button disabled={busy || verificationCode.length !== 6}>
+                <Check size={16} />Confirm code
+              </button>
+            </form>
+            {verificationMessage && <div className="verification-success">{verificationMessage}</div>}
             {error && <div className="alert">{error}</div>}
             <button className="verification-resend" disabled={busy} onClick={() => void resend()}>
               <Mail size={16} />{busy ? "Sending..." : "Resend verification email"}

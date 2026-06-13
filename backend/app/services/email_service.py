@@ -25,13 +25,15 @@ def _send_smtp(recipient: str, subject: str, body: str) -> None:
 
 
 async def send_verification_email(
-    recipient: str, display_name: str, verification_url: str
+    recipient: str, display_name: str, verification_url: str, verification_code: str
 ) -> None:
     settings = get_settings()
     body = (
         f"Hello {display_name},\n\n"
         "Confirm your Momentum account by opening this link:\n"
         f"{verification_url}\n\n"
+        "Or enter this confirmation code in the app:\n"
+        f"{verification_code}\n\n"
         f"The link expires in {settings.email_verification_expire_hours} hours."
     )
     if settings.email_delivery_mode == "smtp":

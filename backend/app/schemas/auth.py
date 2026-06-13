@@ -59,6 +59,11 @@ class EmailVerificationRequest(BaseModel):
     token: str = Field(min_length=32, max_length=200)
 
 
+class EmailVerificationCodeRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(pattern=r"^\d{6}$")
+
+
 class ResendVerificationRequest(BaseModel):
     email: EmailStr
 

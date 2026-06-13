@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
+from secrets import randbelow
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
@@ -31,14 +32,16 @@ def verification_url(token: str) -> str:
     return f"{get_settings().frontend_origin.rstrip('/')}/verify-email?token={token}"
 
 
-def issue_email_verification(user: User) -> tuple[str, str]:
+def issue_email_verification(user: User) -> tuple[str, str, str]:
     settings = get_settings()
     raw_token = create_refresh_token()
+    code = f"{randbelow(1_000_000):06d}"
     user.email_verification_token = hash_refresh_token(raw_token)
+    user.email_verification_code = hash_refresh_token(code)
     user.email_verification_expires_at = datetime.now(timezone.utc) + timedelta(
         hours=settings.email_verification_expire_hours
     )
-    return raw_token, verification_url(raw_token)
+    return raw_token, verification_url(raw_token), code
 
 
 async def register(payload: RegisterRequest, db: AsyncSession) -> RegistrationResponse:
@@ -56,9 +59,9 @@ async def register(payload: RegisterRequest, db: AsyncSession) -> RegistrationRe
     db.add(user)
     await db.flush()
     db.add(UserStats(user_id=user.id))
-    _, url = issue_email_verification(user)
+    _, url, code = issue_email_verification(user)
     try:
-        await send_verification_email(user.email, user.display_name, url)
+        await send_verification_email(user.email, user.display_name, url, code)
         await db.commit()
     except Exception as exc:
         await db.rollback()
@@ -109,6 +112,30 @@ async def confirm_email(token: str, db: AsyncSession) -> MessageResponse:
         )
     user.is_email_verified = True
     user.email_verification_token = None
+    user.email_verification_code = None
+    user.email_verification_expires_at = None
+    await db.commit()
+    return MessageResponse(message="Email confirmed. You can now sign in.")
+
+
+async def confirm_email_code(email: str, code: str, db: AsyncSession) -> MessageResponse:
+    user = await db.scalar(select(User).where(User.email == email.lower()))
+    now = datetime.now(timezone.utc)
+    if (
+        not user
+        or user.is_email_verified
+        or not user.email_verification_code
+        or not user.email_verification_expires_at
+        or user.email_verification_expires_at <= now
+        or user.email_verification_code != hash_refresh_token(code)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Confirmation code is invalid or expired.",
+        )
+    user.is_email_verified = True
+    user.email_verification_token = None
+    user.email_verification_code = None
     user.email_verification_expires_at = None
     await db.commit()
     return MessageResponse(message="Email confirmed. You can now sign in.")
@@ -119,10 +146,10 @@ async def resend_verification(email: str, db: AsyncSession) -> MessageResponse:
     generic_message = "If the account exists and is not confirmed, a new email has been sent."
     if not user or user.is_email_verified:
         return MessageResponse(message=generic_message)
-    _, url = issue_email_verification(user)
+    _, url, code = issue_email_verification(user)
     try:
         await send_verification_email(
-            user.email, user.display_name or user.email.split("@")[0], url
+            user.email, user.display_name or user.email.split("@")[0], url, code
         )
         await db.commit()
     except Exception as exc:

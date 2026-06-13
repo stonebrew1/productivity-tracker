@@ -123,6 +123,12 @@ export const api = {
       { method: "POST", body: JSON.stringify({ token }) },
       false
     ),
+  verifyEmailCode: (email: string, code: string) =>
+    request<{ message: string; verification_url: string | null }>(
+      "/auth/verify-email-code",
+      { method: "POST", body: JSON.stringify({ email, code }) },
+      false
+    ),
   resendVerification: (email: string) =>
     request<{ message: string; verification_url: string | null }>(
       "/auth/resend-verification",

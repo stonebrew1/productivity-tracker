@@ -71,7 +71,9 @@ hostname on port `8000`, and the backend accepts private-network browser origins
 
 Authentication uses short-lived signed JWT access tokens and rotating opaque refresh tokens. Access tokens are kept in browser memory; refresh tokens are stored as hashes and delivered only through an `HttpOnly` cookie. Set a unique `SECRET_KEY` in production and enable `REFRESH_COOKIE_SECURE=true` behind HTTPS.
 
-New registrations require a display name, a strong password, and email confirmation before login. Docker development sends messages through Mailpit; open `http://localhost:8025` to inspect the local inbox. For real delivery, configure the SMTP variables in `backend/.env.example`, set `FRONTEND_ORIGIN` to the public HTTPS URL, and use `SMTP_USE_SSL=true` for implicit TLS providers or `SMTP_USE_TLS=true` for STARTTLS.
+New registrations require a display name, a strong password, and email confirmation before login. Docker development sends messages through Mailpit; open `http://localhost:8025` to inspect the local inbox. For real delivery, configure the SMTP variables in the repository-root `.env`, set `FRONTEND_ORIGIN` to the public HTTPS URL, and use `SMTP_USE_SSL=true` for implicit TLS providers or `SMTP_USE_TLS=true` for STARTTLS.
+
+Docker Compose reads SMTP overrides from a `.env` file in the repository root. Copy `.env.example` to `.env` and replace the sample Gmail values with a provider account and app password. Verification emails include both a magic link and a six-digit confirmation code.
 
 Task create, update, completion, status-change, and deletion events are stored in `task_events`. History remains available after task deletion and can be filtered by task, event type, and date range.
 

@@ -76,6 +76,12 @@ async def create_database_schema() -> None:
                 )
                 await conn.execute(
                     text(
+                        "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
+                        "email_verification_code VARCHAR(64)"
+                    )
+                )
+                await conn.execute(
+                    text(
                         "CREATE INDEX IF NOT EXISTS ix_users_email_verification_token "
                         "ON users (email_verification_token)"
                     )
