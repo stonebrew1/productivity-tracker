@@ -1,11 +1,14 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
 
 
@@ -19,6 +22,7 @@ async def get_current_user(
     try:
         payload = decode_access_token(token)
         user_id = UUID(payload["sub"])
+        session_id = UUID(payload["sid"])
     except (KeyError, TypeError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -26,6 +30,20 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    active_session = await db.scalar(
+        select(RefreshToken.id).where(
+            RefreshToken.user_id == user_id,
+            RefreshToken.family_id == session_id,
+            RefreshToken.revoked_at.is_(None),
+            RefreshToken.expires_at > datetime.now(timezone.utc),
+        )
+    )
+    if not active_session:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session is no longer active.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(

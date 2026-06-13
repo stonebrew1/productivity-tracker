@@ -28,6 +28,7 @@ export function AuthPage({ onLogin, onRegister, onResend, error, setError }: Pro
   const [busy, setBusy] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
+  const [emailConfirmed, setEmailConfirmed] = useState(false);
   const [registration, setRegistration] = useState<RegistrationResponse | null>(null);
   const strength = passwordChecks.filter(([, check]) => check(password)).length;
   const developmentVerificationUrl = registration?.verification_url
@@ -62,6 +63,7 @@ export function AuthPage({ onLogin, onRegister, onResend, error, setError }: Pro
     try {
       const result = await onResend(registration?.email ?? email);
       setRegistration((current) => current ? { ...current, ...result } : current);
+      setEmailConfirmed(false);
       setVerificationMessage("A new link and code were sent.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to resend verification email");
@@ -78,7 +80,8 @@ export function AuthPage({ onLogin, onRegister, onResend, error, setError }: Pro
     setVerificationMessage(null);
     try {
       const result = await api.verifyEmailCode(registration.email, verificationCode);
-      setVerificationMessage(result.message);
+      setEmailConfirmed(Boolean(result.access_token));
+      setVerificationMessage(result.access_token ? `${result.message} You are signed in.` : result.message);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to confirm code");
     } finally {
@@ -138,11 +141,16 @@ export function AuthPage({ onLogin, onRegister, onResend, error, setError }: Pro
               </button>
             </form>
             {verificationMessage && <div className="verification-success">{verificationMessage}</div>}
+            {emailConfirmed && (
+              <button onClick={() => window.location.assign("/today")}>
+                <Check size={16} />Continue to Today
+              </button>
+            )}
             {error && <div className="alert">{error}</div>}
-            <button className="verification-resend" disabled={busy} onClick={() => void resend()}>
+            {!emailConfirmed && <button className="verification-resend" disabled={busy} onClick={() => void resend()}>
               <Mail size={16} />{busy ? "Sending..." : "Resend verification email"}
-            </button>
-            <button className="text-button" onClick={() => { setRegistration(null); setIsRegister(false); }}>Back to sign in</button>
+            </button>}
+            {!emailConfirmed && <button className="text-button" onClick={() => { setRegistration(null); setIsRegister(false); }}>Back to sign in</button>}
           </div>
         ) : (
           <>

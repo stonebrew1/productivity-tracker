@@ -162,23 +162,38 @@ async def resend_verification(email: str, db: AsyncSession) -> MessageResponse:
 
 
 async def issue_tokens(
-    user: User, db: AsyncSession, family_id: UUID | None = None
+    user: User,
+    db: AsyncSession,
+    family_id: UUID | None = None,
+    revoke_existing: bool = True,
 ) -> IssuedSession:
     settings = get_settings()
     now = datetime.now(timezone.utc)
+    active_family_id = family_id or uuid4()
+    if revoke_existing:
+        existing_tokens = list(
+            await db.scalars(
+                select(RefreshToken).where(
+                    RefreshToken.user_id == user.id,
+                    RefreshToken.revoked_at.is_(None),
+                )
+            )
+        )
+        for existing_token in existing_tokens:
+            existing_token.revoked_at = now
     raw_refresh_token = create_refresh_token()
     refresh_token = RefreshToken(
         token=hash_refresh_token(raw_refresh_token),
         created_at=now,
         expires_at=now + timedelta(days=settings.refresh_token_expire_days),
-        family_id=family_id or uuid4(),
+        family_id=active_family_id,
         user_id=user.id,
     )
     db.add(refresh_token)
     await db.commit()
     return IssuedSession(
         response=TokenResponse(
-            access_token=create_access_token(user.id, user.role.value),
+            access_token=create_access_token(user.id, user.role.value, active_family_id),
             expires_in=settings.access_token_expire_minutes * 60,
         ),
         refresh_token=raw_refresh_token,
@@ -213,7 +228,9 @@ async def refresh_session(token: str, db: AsyncSession) -> IssuedSession:
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
     refresh_token.revoked_at = now
-    issued = await issue_tokens(user, db, refresh_token.family_id)
+    issued = await issue_tokens(
+        user, db, refresh_token.family_id, revoke_existing=False
+    )
     refresh_token.replaced_by_token = hash_refresh_token(issued.refresh_token)
     await db.commit()
     return issued

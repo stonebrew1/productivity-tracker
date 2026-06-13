@@ -28,12 +28,13 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
         return False
 
 
-def create_access_token(user_id: UUID, role: str) -> str:
+def create_access_token(user_id: UUID, role: str, session_id: UUID) -> str:
     settings = get_settings()
     issued_at = datetime.now(timezone.utc)
     expires_at = issued_at + timedelta(minutes=settings.access_token_expire_minutes)
     payload = {
         "sub": str(user_id),
+        "sid": str(session_id),
         "role": role,
         "type": "access",
         "iss": settings.jwt_issuer,

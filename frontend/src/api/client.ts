@@ -26,7 +26,8 @@ import type {
   Stats,
   Task,
   TokenResponse,
-  User
+  User,
+  VerificationSessionResponse
 } from "../types/domain";
 
 const API_URL =
@@ -34,15 +35,28 @@ const API_URL =
   `${window.location.protocol}//${window.location.hostname}:8000/api`;
 let accessToken: string | null = null;
 let refreshPromise: Promise<boolean> | null = null;
+const sessionChannel = typeof BroadcastChannel === "undefined"
+  ? null
+  : new BroadcastChannel("momentum_session");
 
 export function getAccessToken() {
   return accessToken;
 }
 
-export function setTokens(tokens: TokenResponse) {
+export function setTokens(tokens: TokenResponse, announce = false) {
   accessToken = tokens.access_token;
   localStorage.removeItem("productivity_access_token");
   localStorage.removeItem("productivity_refresh_token");
+  if (announce) {
+    sessionChannel?.postMessage(tokens);
+  }
+}
+
+export function subscribeToSessionChanges(handler: (tokens: TokenResponse) => void) {
+  if (!sessionChannel) return () => undefined;
+  const listener = (event: MessageEvent<TokenResponse>) => handler(event.data);
+  sessionChannel.addEventListener("message", listener);
+  return () => sessionChannel.removeEventListener("message", listener);
 }
 
 export function clearTokens() {
@@ -118,17 +132,27 @@ export const api = {
   restoreSession: () => refreshAccessToken(),
   logout: () => request<void>("/auth/logout", { method: "POST" }, false),
   verifyEmail: (token: string) =>
-    request<{ message: string; verification_url: string | null }>(
+    request<VerificationSessionResponse>(
       "/auth/verify-email",
       { method: "POST", body: JSON.stringify({ token }) },
       false
-    ),
+    ).then((session) => {
+      if (session.access_token && session.token_type && session.expires_in) {
+        setTokens(session as TokenResponse, true);
+      }
+      return session;
+    }),
   verifyEmailCode: (email: string, code: string) =>
-    request<{ message: string; verification_url: string | null }>(
+    request<VerificationSessionResponse>(
       "/auth/verify-email-code",
       { method: "POST", body: JSON.stringify({ email, code }) },
       false
-    ),
+    ).then((session) => {
+      if (session.access_token && session.token_type && session.expires_in) {
+        setTokens(session as TokenResponse, true);
+      }
+      return session;
+    }),
   resendVerification: (email: string) =>
     request<{ message: string; verification_url: string | null }>(
       "/auth/resend-verification",

@@ -399,6 +399,13 @@ export type TokenResponse = {
   expires_in: number;
 };
 
+export type VerificationSessionResponse = {
+  message: string;
+  access_token: string | null;
+  token_type: string | null;
+  expires_in: number | null;
+};
+
 export type RegistrationResponse = {
   message: string;
   email: string;

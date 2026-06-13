@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.core.security import hash_refresh_token
 from app.models.user import User
 from app.core.config import get_settings
 from app.schemas.auth import (
@@ -14,12 +16,14 @@ from app.schemas.auth import (
     RegistrationResponse,
     ResendVerificationRequest,
     TokenResponse,
+    VerificationSessionResponse,
 )
 from app.schemas.user import UserRead
 from app.services.auth_service import (
     IssuedSession,
     confirm_email,
     confirm_email_code,
+    issue_tokens,
     login,
     logout_session,
     refresh_session,
@@ -51,20 +55,45 @@ async def register_user(
     return await register(payload, db)
 
 
-@router.post("/verify-email", response_model=MessageResponse)
+@router.post("/verify-email", response_model=VerificationSessionResponse)
 async def verify_email(
     payload: EmailVerificationRequest,
+    response: Response,
+    refresh_token: str | None = Cookie(default=None, alias=settings.refresh_cookie_name),
     db: AsyncSession = Depends(get_db),
-) -> MessageResponse:
-    return await confirm_email(payload.token, db)
+) -> VerificationSessionResponse:
+    token_digest = hash_refresh_token(payload.token)
+    user = await db.scalar(select(User).where(User.email_verification_token == token_digest))
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification link is invalid.")
+    was_verified = user.is_email_verified
+    confirmation = await confirm_email(payload.token, db)
+    if was_verified:
+        return VerificationSessionResponse(message=confirmation.message)
+    await logout_session(refresh_token, db)
+    session = await issue_tokens(user, db)
+    set_refresh_cookie(response, session)
+    return VerificationSessionResponse(**session.response.model_dump(), message=confirmation.message)
 
 
-@router.post("/verify-email-code", response_model=MessageResponse)
+@router.post("/verify-email-code", response_model=VerificationSessionResponse)
 async def verify_email_code(
     payload: EmailVerificationCodeRequest,
+    response: Response,
+    refresh_token: str | None = Cookie(default=None, alias=settings.refresh_cookie_name),
     db: AsyncSession = Depends(get_db),
-) -> MessageResponse:
-    return await confirm_email_code(str(payload.email), payload.code, db)
+) -> VerificationSessionResponse:
+    user = await db.scalar(select(User).where(User.email == str(payload.email).lower()))
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation code is invalid.")
+    was_verified = user.is_email_verified
+    confirmation = await confirm_email_code(str(payload.email), payload.code, db)
+    if was_verified:
+        return VerificationSessionResponse(message=confirmation.message)
+    await logout_session(refresh_token, db)
+    session = await issue_tokens(user, db)
+    set_refresh_cookie(response, session)
+    return VerificationSessionResponse(**session.response.model_dump(), message=confirmation.message)
 
 
 @router.post("/resend-verification", response_model=MessageResponse)
@@ -79,9 +108,11 @@ async def resend_confirmation(
 async def login_user(
     payload: LoginRequest,
     response: Response,
+    refresh_token: str | None = Cookie(default=None, alias=settings.refresh_cookie_name),
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:
     session = await login(payload, db)
+    await logout_session(refresh_token, db)
     set_refresh_cookie(response, session)
     return session.response
 

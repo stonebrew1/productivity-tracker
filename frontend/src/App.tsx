@@ -2,7 +2,7 @@ import { BarChart3, CheckSquare2, Flame, Home, LogOut, Trophy, Users, UsersRound
 import { useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
-import { api, clearTokens, setTokens } from "./api/client";
+import { api, clearTokens, setTokens, subscribeToSessionChanges } from "./api/client";
 import { AchievementsPage } from "./pages/AchievementsPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -32,6 +32,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const isVerificationRoute = location.pathname === "/verify-email";
 
   async function loadWorkspace() {
     setError(null);
@@ -49,17 +50,50 @@ export function App() {
     setStats(nextStats);
   }
 
+  function resetWorkspaceState() {
+    setUser(null);
+    setTasks([]);
+    setCategories([]);
+    setAchievements([]);
+    setStats(null);
+  }
+
+  function clearWorkspace() {
+    clearTokens();
+    resetWorkspaceState();
+  }
+
   useEffect(() => {
+    if (isVerificationRoute) {
+      setLoading(false);
+      return;
+    }
     api.restoreSession()
       .then((restored) => restored ? loadWorkspace() : undefined)
       .catch(() => clearTokens())
       .finally(() => setLoading(false));
-  }, []);
+  }, [isVerificationRoute]);
+
+  useEffect(() => {
+    return subscribeToSessionChanges((tokens) => {
+      setTokens(tokens);
+      resetWorkspaceState();
+      loadWorkspace().catch(() => {
+        clearWorkspace();
+        navigate("/login", { replace: true });
+      });
+    });
+  }, [navigate]);
+
+  async function handleVerifiedSession() {
+    resetWorkspaceState();
+    await loadWorkspace();
+  }
 
   async function handleLogin(email: string, password: string) {
     setError(null);
     const tokens = await api.login(email, password);
-    setTokens(tokens);
+    setTokens(tokens, true);
     await loadWorkspace();
     const requestedPath = (location.state as { from?: string } | null)?.from;
     navigate(requestedPath && requestedPath !== "/login" ? requestedPath : "/today", { replace: true });
@@ -74,12 +108,7 @@ export function App() {
 
   async function handleLogout() {
     await api.logout().catch(() => undefined);
-    clearTokens();
-    setUser(null);
-    setTasks([]);
-    setCategories([]);
-    setAchievements([]);
-    setStats(null);
+    clearWorkspace();
     navigate("/login", { replace: true });
   }
 
@@ -92,6 +121,13 @@ export function App() {
   }
 
   if (loading) return <div className="loading">Loading workspace...</div>;
+  if (isVerificationRoute) {
+    return (
+      <Routes>
+        <Route path="/verify-email" element={<VerifyEmailPage onVerified={handleVerifiedSession} />} />
+      </Routes>
+    );
+  }
   if (!user) {
     return (
       <Routes>
@@ -99,7 +135,6 @@ export function App() {
           path="/login"
           element={<AuthPage onLogin={handleLogin} onRegister={handleRegister} onResend={api.resendVerification} error={error} setError={setError} />}
         />
-        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="*" element={<Navigate to="/login" replace state={{ from: location.pathname }} />} />
       </Routes>
     );

@@ -27,9 +27,11 @@ def test_password_hash_rejects_more_than_72_bytes() -> None:
 
 def test_access_token_has_expected_identity_and_type() -> None:
     user_id = uuid4()
-    payload = decode_access_token(create_access_token(user_id, "user"))
+    session_id = uuid4()
+    payload = decode_access_token(create_access_token(user_id, "user", session_id))
 
     assert payload["sub"] == str(user_id)
+    assert payload["sid"] == str(session_id)
     assert payload["role"] == "user"
     assert payload["type"] == "access"
     assert payload["jti"]

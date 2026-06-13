@@ -49,6 +49,13 @@ class TokenResponse(BaseModel):
     expires_in: int
 
 
+class VerificationSessionResponse(BaseModel):
+    message: str
+    access_token: str | None = None
+    token_type: str | None = None
+    expires_in: int | None = None
+
+
 class RegistrationResponse(BaseModel):
     message: str
     email: EmailStr

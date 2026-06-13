@@ -4,7 +4,11 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { api } from "../api/client";
 
-export function VerifyEmailPage() {
+type Props = {
+  onVerified: () => Promise<void>;
+};
+
+export function VerifyEmailPage({ onVerified }: Props) {
   const [searchParams] = useSearchParams();
   const verificationStarted = useRef(false);
   const [state, setState] = useState<"loading" | "success" | "error">("loading");
@@ -20,9 +24,10 @@ export function VerifyEmailPage() {
       return;
     }
     api.verifyEmail(token)
-      .then((result) => {
+      .then(async (result) => {
+        if (result.access_token) await onVerified();
         setState("success");
-        setMessage(result.message);
+        setMessage(result.access_token ? `${result.message} You are signed in.` : result.message);
       })
       .catch((error) => {
         setState("error");
@@ -39,7 +44,7 @@ export function VerifyEmailPage() {
         </span>
         <h1>{state === "loading" ? "Confirming email" : state === "success" ? "Email confirmed" : "Link unavailable"}</h1>
         <p>{message}</p>
-        {state !== "loading" && <Link to="/login">{state === "success" ? "Continue to sign in" : "Return to registration"}</Link>}
+        {state !== "loading" && <Link to={state === "success" ? "/today" : "/login"}>{state === "success" ? "Continue" : "Return to registration"}</Link>}
       </section>
     </main>
   );
