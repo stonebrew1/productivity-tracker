@@ -10,6 +10,7 @@ import {
 } from "@dnd-kit/core";
 import { Activity, AlertTriangle, Award, BarChart3, CalendarDays, Check, CheckCircle2, Circle, ClipboardList, Clock3, Copy, Crown, Flag, Flame, Gauge, GripVertical, Heart, KeyRound, LayoutDashboard, LoaderCircle, Lock, Medal, MessageCircle, Pencil, Plus, RefreshCw, Save, Send, Shield, Target, Trash2, Trophy, UserPlus, UsersRound, X, Zap } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { api } from "../api/client";
 import type { GroupAchievement, GroupActivity, GroupAnalytics, GroupChallenge, GroupInvitation, GroupMilestone, GroupProgress, GroupTask, Person, ProductivityGroup, TaskPriority, TaskStatus } from "../types/domain";
@@ -32,11 +33,11 @@ const GROUP_SECTIONS = [
 ] as const;
 
 export function GroupsPage({ onError }: { onError: (message: string | null) => void }) {
+  const { groupId, section } = useParams();
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<ProductivityGroup[]>([]);
   const [invitations, setInvitations] = useState<GroupInvitation[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [groupSection, setGroupSection] = useState<GroupSection>("overview");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [joinCode, setJoinCode] = useState("");
@@ -72,6 +73,10 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
   const dragSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
+  const selectedId = groupId ?? null;
+  const groupSection: GroupSection = GROUP_SECTIONS.some(([id]) => id === section)
+    ? section as GroupSection
+    : "overview";
 
   async function loadGroups(preferredId?: string) {
     const [nextGroups, nextInvitations, nextPeople] = await Promise.all([
@@ -82,8 +87,15 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
     setGroups(nextGroups);
     setInvitations(nextInvitations);
     setPeople(nextPeople.filter((person) => person.is_following));
-    const nextSelected = preferredId ?? selectedId ?? nextGroups[0]?.id ?? null;
-    setSelectedId(nextGroups.some((group) => group.id === nextSelected) ? nextSelected : nextGroups[0]?.id ?? null);
+    const requestedId = preferredId ?? groupId;
+    const nextSelected = nextGroups.some((group) => group.id === requestedId)
+      ? requestedId
+      : nextGroups[0]?.id;
+    if (nextSelected && (groupId !== nextSelected || section !== groupSection)) {
+      navigate(`/groups/${nextSelected}/${preferredId ? "overview" : groupSection}`, { replace: true });
+    } else if (!nextSelected && (groupId || section)) {
+      navigate("/groups", { replace: true });
+    }
   }
 
   useEffect(() => {
@@ -146,7 +158,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       setName("");
       setDescription("");
     }, createdId);
-    if (createdId) setSelectedId(createdId);
+    if (createdId) navigate(`/groups/${createdId}/overview`);
   }
 
   async function submitJoin(event: FormEvent) {
@@ -157,7 +169,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
       joinedId = group.id;
       setJoinCode("");
     }, joinedId);
-    if (joinedId) setSelectedId(joinedId);
+    if (joinedId) navigate(`/groups/${joinedId}/overview`);
   }
 
   async function refreshTasks(groupId = selectedId) {
@@ -486,8 +498,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
             <div className="section-heading"><h2>Your groups</h2><span>{groups.length}</span></div>
             {groups.map((group) => (
               <button className={selectedId === group.id ? "active" : ""} onClick={() => {
-                setSelectedId(group.id);
-                setGroupSection("overview");
+                navigate(`/groups/${group.id}/overview`);
               }} key={group.id}>
                 <span className="group-icon"><UsersRound size={17} /></span>
                 <span><strong>{group.name}</strong><small>{group.member_count} members</small></span>
@@ -529,7 +540,7 @@ export function GroupsPage({ onError }: { onError: (message: string | null) => v
                   <button
                     className={groupSection === id ? "active" : ""}
                     key={id}
-                    onClick={() => setGroupSection(id)}
+                    onClick={() => navigate(`/groups/${selected.id}/${id}`)}
                   >
                     <Icon size={15} />
                     <span>{label}</span>

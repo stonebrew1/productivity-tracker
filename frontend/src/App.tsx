@@ -1,5 +1,6 @@
 import { BarChart3, CheckSquare2, Flame, Home, LogOut, Trophy, Users, UsersRound, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { api, clearTokens, setTokens } from "./api/client";
 import { AchievementsPage } from "./pages/AchievementsPage";
@@ -11,17 +12,25 @@ import { SocialPage } from "./pages/SocialPage";
 import { TasksPage } from "./pages/TasksPage";
 import type { Achievement, Category, Stats, Task, User } from "./types/domain";
 
-type View = "dashboard" | "tasks" | "social" | "groups" | "achievements" | "statistics";
+const NAV_ITEMS = [
+  { path: "/today", label: "Today", icon: Home },
+  { path: "/tasks", label: "Tasks", icon: CheckSquare2 },
+  { path: "/social", label: "Social", icon: Users },
+  { path: "/groups", label: "Groups", icon: UsersRound },
+  { path: "/progress", label: "Progress", icon: Trophy },
+  { path: "/statistics", label: "Statistics", icon: BarChart3 }
+];
 
 export function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [view, setView] = useState<View>("dashboard");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   async function loadWorkspace() {
     setError(null);
@@ -52,6 +61,8 @@ export function App() {
     const tokens = await api.login(email, password);
     setTokens(tokens);
     await loadWorkspace();
+    const requestedPath = (location.state as { from?: string } | null)?.from;
+    navigate(requestedPath && requestedPath !== "/login" ? requestedPath : "/today", { replace: true });
   }
 
   async function handleLogout() {
@@ -62,6 +73,7 @@ export function App() {
     setCategories([]);
     setAchievements([]);
     setStats(null);
+    navigate("/login", { replace: true });
   }
 
   async function refreshData() {
@@ -73,20 +85,24 @@ export function App() {
   }
 
   if (loading) return <div className="loading">Loading workspace...</div>;
-  if (!user) return <AuthPage onSubmit={handleLogin} error={error} setError={setError} />;
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<AuthPage onSubmit={handleLogin} error={error} setError={setError} />} />
+        <Route path="*" element={<Navigate to="/login" replace state={{ from: location.pathname }} />} />
+      </Routes>
+    );
+  }
 
-  const navItems = [
-    { id: "dashboard" as View, label: "Today", icon: Home },
-    { id: "tasks" as View, label: "Tasks", icon: CheckSquare2 },
-    { id: "social" as View, label: "Social", icon: Users },
-    { id: "groups" as View, label: "Groups", icon: UsersRound },
-    { id: "achievements" as View, label: "Progress", icon: Trophy },
-    { id: "statistics" as View, label: "Statistics", icon: BarChart3 }
-  ];
   const displayName = user.display_name || user.email.split("@")[0];
   const level = stats?.level ?? 1;
   const xp = stats?.xp_total ?? 0;
   const streak = stats?.current_streak ?? 0;
+  const activeNav = NAV_ITEMS.find((item) =>
+    item.path === "/groups"
+      ? location.pathname.startsWith("/groups")
+      : location.pathname === item.path
+  );
 
   return (
     <div className="app-shell">
@@ -105,19 +121,20 @@ export function App() {
           <i><b style={{ width: `${stats ? Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100) : 0}%` }} /></i>
         </div>
         <nav aria-label="Primary navigation">
-          {navItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
-              <button
+              <NavLink
                 aria-label={item.label}
-                className={view === item.id ? "active" : ""}
-                key={item.id}
-                onClick={() => setView(item.id)}
+                className={({ isActive }) => isActive ? "active" : ""}
+                end={item.path !== "/groups"}
+                key={item.path}
                 title={item.label}
+                to={item.path}
               >
                 <Icon size={18} />
                 <span>{item.label}</span>
-              </button>
+              </NavLink>
             );
           })}
         </nav>
@@ -129,50 +146,48 @@ export function App() {
         <header className="mobile-header">
           <div className="brand">
             <span className="brand-mark"><Zap size={18} fill="currentColor" /></span>
-            <span className="brand-copy"><strong>Momentum</strong><small>{navItems.find((item) => item.id === view)?.label}</small></span>
+            <span className="brand-copy"><strong>Momentum</strong><small>{activeNav?.label ?? "Today"}</small></span>
           </div>
           <span className="mobile-streak"><Flame size={15} /> {streak}</span>
         </header>
         <main className="content">
           <div className="content-inner">
             {error && <div className="alert">{error}</div>}
-            {view === "dashboard" && (
-              <DashboardPage
-                tasks={tasks}
-                categories={categories}
-                achievements={achievements}
-                stats={stats}
-                onChanged={refreshData}
-                onError={setError}
+            <Routes>
+              <Route path="/" element={<Navigate to="/today" replace />} />
+              <Route
+                path="/today"
+                element={<DashboardPage tasks={tasks} categories={categories} achievements={achievements} stats={stats} onChanged={refreshData} onError={setError} />}
               />
-            )}
-            {view === "tasks" && (
-              <TasksPage
-                tasks={tasks}
-                categories={categories}
-                onChanged={refreshData}
-                onError={setError}
+              <Route
+                path="/tasks"
+                element={<TasksPage tasks={tasks} categories={categories} onChanged={refreshData} onError={setError} />}
               />
-            )}
-            {view === "social" && <SocialPage onError={setError} />}
-            {view === "groups" && <GroupsPage onError={setError} />}
-            {view === "achievements" && <AchievementsPage onError={setError} />}
-            {view === "statistics" && <StatisticsPage stats={stats} />}
+              <Route path="/social" element={<SocialPage onError={setError} />} />
+              <Route path="/groups" element={<GroupsPage onError={setError} />} />
+              <Route path="/groups/:groupId" element={<GroupsPage onError={setError} />} />
+              <Route path="/groups/:groupId/:section" element={<GroupsPage onError={setError} />} />
+              <Route path="/progress" element={<AchievementsPage onError={setError} />} />
+              <Route path="/statistics" element={<StatisticsPage stats={stats} />} />
+              <Route path="/login" element={<Navigate to="/today" replace />} />
+              <Route path="*" element={<Navigate to="/today" replace />} />
+            </Routes>
           </div>
         </main>
         <nav className="mobile-nav" aria-label="Mobile navigation">
-          {navItems.map((item) => {
+          {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
-              <button
+              <NavLink
                 aria-label={item.label}
-                className={view === item.id ? "active" : ""}
-                key={item.id}
-                onClick={() => setView(item.id)}
+                className={({ isActive }) => isActive ? "active" : ""}
+                end={item.path !== "/groups"}
+                key={item.path}
+                to={item.path}
               >
                 <Icon size={20} />
-                <span>{item.label === "Gamification" ? "Progress" : item.label}</span>
-              </button>
+                <span>{item.label}</span>
+              </NavLink>
             );
           })}
         </nav>
