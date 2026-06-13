@@ -402,6 +402,8 @@ p { color: var(--muted); line-height: 1.6; }
 
 /* Inbox */
 .inbox-page { display: grid; gap: 18px; }
+.inbox-mark-read { display: inline-flex; width: auto; min-height: 38px; align-items: center; justify-content: center; gap: 7px; border: 1px solid rgba(139,92,246,.42); border-radius: 7px; background: var(--violet-dim); color: #c4b5fd; padding: 0 13px; font-size: .7rem; font-weight: 700; }
+.inbox-mark-read:hover { border-color: var(--violet-light); background: rgba(124,58,237,.24); color: white; }
 .inbox-toolbar { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
 .inbox-toolbar > span { color: var(--muted); font-size: .7rem; }
 .segmented-control { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-1); padding: 3px; }
@@ -419,6 +421,9 @@ p { color: var(--muted); line-height: 1.6; }
 .inbox-actions { display: flex; gap: 6px; }
 .inbox-actions button { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--muted); }
 .inbox-actions button:hover { border-color: var(--violet-light); color: #c4b5fd; }
+.inbox-actions button.accept { border-color: rgba(16,185,129,.3); color: var(--emerald); }
+.inbox-actions button.decline { border-color: rgba(239,68,68,.25); color: #f87171; }
+.request-resolved { display: inline-flex; align-items: center; gap: 5px; color: var(--emerald); font-size: .66rem; font-weight: 700; white-space: nowrap; }
 .inbox-empty { display: grid; min-height: 240px; place-items: center; align-content: center; gap: 8px; color: var(--muted); text-align: center; }
 .inbox-empty strong { color: var(--text); }
 .inbox-empty p { margin: 0; font-size: .72rem; }

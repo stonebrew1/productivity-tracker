@@ -341,14 +341,17 @@ async def accept_friend_request(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     friendship = await db.get(Friendship, friendship_id)
-    if (
-        not friendship
-        or friendship.addressee_id != current_user.id
-        or friendship.status != "pending"
-    ):
+    if not friendship or friendship.addressee_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Friend request not found.")
+    if friendship.status == "accepted":
+        await mark_friend_request_notifications_resolved(friendship.id, current_user.id, db)
+        await db.commit()
+        return
+    if friendship.status != "pending":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Friend request not found.")
     friendship.status = "accepted"
     friendship.responded_at = datetime.now(timezone.utc)
+    await mark_friend_request_notifications_resolved(friendship.id, current_user.id, db)
     db.add(
         Notification(
             kind="friend_accepted",
@@ -602,9 +605,10 @@ async def read_notifications(
 ) -> list[NotificationRead]:
     rows = (
         await db.execute(
-            select(Notification, User, UserStats)
+            select(Notification, User, UserStats, Friendship)
             .join(User, User.id == Notification.actor_id)
             .outerjoin(UserStats, UserStats.user_id == User.id)
+            .outerjoin(Friendship, Friendship.id == Notification.friendship_id)
             .where(Notification.recipient_id == current_user.id)
             .order_by(Notification.created_at.desc())
             .limit(100)
@@ -619,9 +623,10 @@ async def read_notifications(
             created_at=notification.created_at,
             post_id=notification.post_id,
             friendship_id=notification.friendship_id,
+            friendship_status=friendship.status if friendship else None,
             actor=feed_author(actor, stats),
         )
-        for notification, actor, stats in rows
+        for notification, actor, stats, friendship in rows
     ]
 
 
@@ -654,6 +659,24 @@ async def mark_notification_read(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found.")
     notification.is_read = True
     await db.commit()
+
+
+async def mark_friend_request_notifications_resolved(
+    friendship_id: UUID,
+    recipient_id: UUID,
+    db: AsyncSession,
+) -> None:
+    notifications = list(
+        await db.scalars(
+            select(Notification).where(
+                Notification.friendship_id == friendship_id,
+                Notification.recipient_id == recipient_id,
+                Notification.kind == "friend_request",
+            )
+        )
+    )
+    for notification in notifications:
+        notification.is_read = True
 
 
 def profile_response(user: User, stats: UserStats) -> ProfileRead:

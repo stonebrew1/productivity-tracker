@@ -182,6 +182,7 @@ export type SocialNotification = {
   created_at: string;
   post_id: string | null;
   friendship_id: string | null;
+  friendship_status: "pending" | "accepted" | null;
   actor: FeedPost["author"];
 };
 

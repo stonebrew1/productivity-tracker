@@ -46,7 +46,7 @@ export function InboxPage({ onError }: Props) {
           <p>Friend requests, encouragement, comments, and team updates.</p>
         </div>
         {unread > 0 && (
-          <button className="secondary-action" onClick={() => mutate(() => api.markNotificationsRead())}>
+          <button className="inbox-mark-read" onClick={() => mutate(() => api.markNotificationsRead())}>
             <CheckCheck size={16} />Mark all read
           </button>
         )}
@@ -73,11 +73,14 @@ export function InboxPage({ onError }: Props) {
               <time>{relativeTime(notification.created_at)}</time>
             </div>
             <div className="inbox-actions">
-              {notification.kind === "friend_request" && notification.friendship_id && (
+              {notification.kind === "friend_request" && notification.friendship_id && notification.friendship_status === "pending" && (
                 <>
-                  <button title="Accept request" onClick={() => mutate(() => api.acceptFriendRequest(notification.friendship_id!))}><UserCheck size={16} /></button>
-                  <button title="Decline request" onClick={() => mutate(() => api.declineFriendRequest(notification.friendship_id!))}><UserX size={16} /></button>
+                  <button className="accept" title="Accept request" onClick={() => mutate(() => api.acceptFriendRequest(notification.friendship_id!))}><UserCheck size={16} /></button>
+                  <button className="decline" title="Decline request" onClick={() => mutate(() => api.declineFriendRequest(notification.friendship_id!))}><UserX size={16} /></button>
                 </>
+              )}
+              {notification.kind === "friend_request" && notification.friendship_status === "accepted" && (
+                <span className="request-resolved"><Check size={14} />Friends</span>
               )}
               {!notification.is_read && (
                 <button title="Mark read" onClick={() => mutate(() => api.markNotificationRead(notification.id))}><Check size={16} /></button>

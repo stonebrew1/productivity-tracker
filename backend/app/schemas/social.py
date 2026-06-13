@@ -84,6 +84,7 @@ class NotificationRead(BaseModel):
     created_at: datetime
     post_id: UUID | None
     friendship_id: UUID | None
+    friendship_status: str | None
     actor: FeedAuthor
 
 
