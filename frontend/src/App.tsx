@@ -1,7 +1,7 @@
 import { BarChart3, CheckSquare2, Flame, Home, LogOut, Trophy, Users, UsersRound, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { api, clearTokens, getAccessToken, setTokens } from "./api/client";
+import { api, clearTokens, setTokens } from "./api/client";
 import { AchievementsPage } from "./pages/AchievementsPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -20,7 +20,7 @@ export function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(Boolean(getAccessToken()));
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   async function loadWorkspace() {
@@ -40,8 +40,10 @@ export function App() {
   }
 
   useEffect(() => {
-    if (!getAccessToken()) return;
-    loadWorkspace().catch(() => clearTokens()).finally(() => setLoading(false));
+    api.restoreSession()
+      .then((restored) => restored ? loadWorkspace() : undefined)
+      .catch(() => clearTokens())
+      .finally(() => setLoading(false));
   }, []);
 
   async function handleLogin(email: string, password: string, isRegister: boolean) {
@@ -52,7 +54,8 @@ export function App() {
     await loadWorkspace();
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    await api.logout().catch(() => undefined);
     clearTokens();
     setUser(null);
     setTasks([]);
@@ -119,7 +122,7 @@ export function App() {
           })}
         </nav>
         <div className="account">
-          <button aria-label="Sign out" title="Sign out" onClick={handleLogout}><LogOut size={17} /><span>Sign out</span></button>
+          <button aria-label="Sign out" title="Sign out" onClick={() => void handleLogout()}><LogOut size={17} /><span>Sign out</span></button>
         </div>
       </aside>
       <div className="workspace">

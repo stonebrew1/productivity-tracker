@@ -30,6 +30,8 @@ hostname on port `8000`, and the backend accepts private-network browser origins
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/refresh`
+- `POST /api/auth/logout`
 - `GET /api/auth/me`
 - `GET/POST /api/categories`
 - `GET/POST /api/tasks`
@@ -66,6 +68,8 @@ hostname on port `8000`, and the backend accepts private-network browser origins
 - `GET /api/gamification`
 
 ## Notes
+
+Authentication uses short-lived signed JWT access tokens and rotating opaque refresh tokens. Access tokens are kept in browser memory; refresh tokens are stored as hashes and delivered only through an `HttpOnly` cookie. Set a unique `SECRET_KEY` in production and enable `REFRESH_COOKIE_SECURE=true` behind HTTPS.
 
 Task create, update, completion, status-change, and deletion events are stored in `task_events`. History remains available after task deletion and can be filtered by task, event type, and date range.
 

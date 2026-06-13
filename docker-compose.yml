@@ -15,7 +15,10 @@ services:
       context: ./backend
     environment:
       DATABASE_URL: postgresql+asyncpg://productivity:productivity@db:5432/productivity
-      SECRET_KEY: local-development-secret
+      SECRET_KEY: local-development-secret-change-in-production
+      JWT_ISSUER: momentum-api
+      JWT_AUDIENCE: momentum-web
+      REFRESH_COOKIE_SECURE: "false"
       FRONTEND_ORIGIN: http://localhost:5173
     ports:
       - "8000:8000"

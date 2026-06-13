@@ -119,6 +119,46 @@ async def create_database_schema() -> None:
                         "ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ"
                     )
                 )
+                await conn.execute(
+                    text("ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ")
+                )
+                await conn.execute(
+                    text("UPDATE refresh_tokens SET created_at = NOW() WHERE created_at IS NULL")
+                )
+                await conn.execute(
+                    text("ALTER TABLE refresh_tokens ALTER COLUMN created_at SET NOT NULL")
+                )
+                await conn.execute(
+                    text("ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ")
+                )
+                await conn.execute(
+                    text("ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS family_id UUID")
+                )
+                await conn.execute(
+                    text("UPDATE refresh_tokens SET family_id = id WHERE family_id IS NULL")
+                )
+                await conn.execute(
+                    text("ALTER TABLE refresh_tokens ALTER COLUMN family_id SET NOT NULL")
+                )
+                await conn.execute(
+                    text("ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS replaced_by_token VARCHAR(255)")
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS ix_refresh_tokens_family "
+                        "ON refresh_tokens (family_id)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        """
+                        UPDATE refresh_tokens
+                        SET revoked_at = COALESCE(revoked_at, NOW()),
+                            token = md5(token || id::text) || md5(id::text || token)
+                        WHERE token !~ '^[0-9a-f]{64}$'
+                        """
+                    )
+                )
             return
         except Exception as exc:
             last_error = exc

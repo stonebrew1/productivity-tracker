@@ -31,30 +31,69 @@ import type {
 const API_URL =
   import.meta.env.VITE_API_URL ??
   `${window.location.protocol}//${window.location.hostname}:8000/api`;
-const ACCESS_TOKEN_KEY = "productivity_access_token";
-const REFRESH_TOKEN_KEY = "productivity_refresh_token";
+let accessToken: string | null = null;
+let refreshPromise: Promise<boolean> | null = null;
 
 export function getAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return accessToken;
 }
 
 export function setTokens(tokens: TokenResponse) {
-  localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access_token);
-  localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh_token);
+  accessToken = tokens.access_token;
+  localStorage.removeItem("productivity_access_token");
+  localStorage.removeItem("productivity_refresh_token");
 }
 
 export function clearTokens() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  accessToken = null;
+  localStorage.removeItem("productivity_access_token");
+  localStorage.removeItem("productivity_refresh_token");
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function refreshAccessToken(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include"
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          clearTokens();
+          return false;
+        }
+        setTokens(await response.json() as TokenResponse);
+        return true;
+      })
+      .catch(() => {
+        clearTokens();
+        return false;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  retryAfterRefresh = true
+): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers,
+    credentials: "include"
+  });
+  if (response.status === 401 && retryAfterRefresh && !path.startsWith("/auth/")) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) return request<T>(path, options, false);
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new Error(body.detail ?? "Request failed");
@@ -67,7 +106,13 @@ export const api = {
   register: (email: string, password: string) =>
     request<User>("/auth/register", { method: "POST", body: JSON.stringify({ email, password }) }),
   login: (email: string, password: string) =>
-    request<TokenResponse>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+    request<TokenResponse>(
+      "/auth/login",
+      { method: "POST", body: JSON.stringify({ email, password }) },
+      false
+    ),
+  restoreSession: () => refreshAccessToken(),
+  logout: () => request<void>("/auth/logout", { method: "POST" }, false),
   me: () => request<User>("/auth/me"),
   categories: () => request<Category[]>("/categories"),
   createCategory: (name: string) =>

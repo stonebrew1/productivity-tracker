@@ -5,10 +5,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://productivity:productivity@localhost:5432/productivity"
-    secret_key: str = "change-me-in-production"
+    secret_key: str = "local-development-secret-change-in-production"
     algorithm: str = "HS256"
+    jwt_issuer: str = "momentum-api"
+    jwt_audience: str = "momentum-web"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
+    refresh_cookie_secure: bool = False
+    refresh_cookie_name: str = "momentum_refresh"
     frontend_origin: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
