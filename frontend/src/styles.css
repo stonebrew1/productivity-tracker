@@ -96,6 +96,7 @@ p { color: var(--muted); line-height: 1.6; }
 .workspace { min-height: 100vh; margin-left: 240px; }
 .content { min-height: 100vh; }
 .content-inner { width: min(1080px, 100%); margin: 0 auto; padding: 42px 38px 70px; }
+.content-inner:has(> .groups-page) { width: min(1440px, 100%); }
 .mobile-header, .mobile-nav { display: none; }
 
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
