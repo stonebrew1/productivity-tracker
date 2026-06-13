@@ -136,6 +136,9 @@ async def sync_group_rewards(group_id: UUID, db: AsyncSession) -> None:
     from app.services.group_challenge_service import sync_group_challenges
 
     await sync_group_challenges(group_id, db)
+    from app.services.group_achievement_service import evaluate_group_achievements
+
+    await evaluate_group_achievements(group_id, db)
 
 
 async def group_progress(

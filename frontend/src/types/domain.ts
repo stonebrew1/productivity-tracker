@@ -304,7 +304,7 @@ export type GroupActivityComment = {
 
 export type GroupActivity = {
   id: string;
-  kind: "update" | "member_joined" | "task_created" | "task_status" | "task_assigned" | "task_completed" | "milestone_created" | "milestone_reached" | "challenge_created" | "challenge_completed" | "challenge_cancelled";
+  kind: "update" | "member_joined" | "task_created" | "task_status" | "task_assigned" | "task_completed" | "milestone_created" | "milestone_reached" | "challenge_created" | "challenge_completed" | "challenge_cancelled" | "achievement_unlocked";
   content: string;
   created_at: string;
   author: GroupActivityAuthor;
@@ -328,6 +328,19 @@ export type GroupChallenge = {
   completed: boolean;
   expired: boolean;
   can_manage: boolean;
+};
+
+export type GroupAchievement = {
+  code: string;
+  title: string;
+  description: string;
+  rarity: "common" | "rare" | "epic";
+  icon: "check" | "flag" | "trophy" | "heart" | "flame";
+  reward_xp: number;
+  progress: number;
+  target: number;
+  unlocked: boolean;
+  unlocked_at: string | null;
 };
 
 export type GroupAnalytics = {

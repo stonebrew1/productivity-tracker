@@ -9,6 +9,7 @@ import type {
   GamificationDashboard,
   GroupActivity,
   GroupActivityComment,
+  GroupAchievement,
   GroupAnalytics,
   GroupChallenge,
   GroupInvitation,
@@ -150,6 +151,7 @@ export const api = {
   groupActivity: (groupId: string) => request<GroupActivity[]>(`/groups/${groupId}/activity`),
   groupAnalytics: (groupId: string) => request<GroupAnalytics>(`/groups/${groupId}/analytics`),
   groupChallenges: (groupId: string) => request<GroupChallenge[]>(`/groups/${groupId}/challenges`),
+  groupAchievements: (groupId: string) => request<GroupAchievement[]>(`/groups/${groupId}/achievements`),
   createGroupChallenge: (groupId: string, payload: { title: string; description?: string | null; target: number; reward_xp: number; ends_at: string }) =>
     request<GroupChallenge>(`/groups/${groupId}/challenges`, {
       method: "POST",

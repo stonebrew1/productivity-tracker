@@ -11,6 +11,7 @@ from app.schemas.group import (
     GroupActivityCreate,
     GroupActivityCommentRead,
     GroupActivityRead,
+    GroupAchievementRead,
     GroupAnalyticsRead,
     GroupChallengeCreate,
     GroupChallengeRead,
@@ -62,6 +63,7 @@ from app.services.group_challenge_service import (
     delete_group_challenge,
     list_group_challenges,
 )
+from app.services.group_achievement_service import list_group_achievements
 
 
 router = APIRouter(prefix="/groups", tags=["groups"])
@@ -191,6 +193,15 @@ async def read_group_challenges(
     db: AsyncSession = Depends(get_db),
 ) -> list[GroupChallengeRead]:
     return await list_group_challenges(group_id, current_user.id, db)
+
+
+@router.get("/{group_id}/achievements", response_model=list[GroupAchievementRead])
+async def read_group_achievements(
+    group_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[GroupAchievementRead]:
+    return await list_group_achievements(group_id, current_user.id, db)
 
 
 @router.post("/{group_id}/challenges", response_model=GroupChallengeRead, status_code=201)
