@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { api, clearTokens, setTokens, subscribeToSessionChanges } from "./api/client";
+import { UserAvatar } from "./components/UserAvatar";
 import { AchievementsPage } from "./pages/AchievementsPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { GroupsPage } from "./pages/GroupsPage";
 import { InboxPage } from "./pages/InboxPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { StatisticsPage } from "./pages/StatisticsPage";
 import { SocialPage } from "./pages/SocialPage";
 import { TasksPage } from "./pages/TasksPage";
@@ -173,7 +175,11 @@ export function App() {
       ? location.pathname.startsWith("/groups")
       : location.pathname === item.path
   );
-  const activeLabel = location.pathname === "/inbox" ? "Inbox" : activeNav?.label ?? "Today";
+  const activeLabel = location.pathname === "/inbox"
+    ? "Inbox"
+    : location.pathname === "/profile"
+      ? "Profile"
+      : activeNav?.label ?? "Today";
 
   return (
     <div className="app-shell">
@@ -182,11 +188,11 @@ export function App() {
           <span className="brand-mark"><Zap size={20} fill="currentColor" /></span>
           <span className="brand-copy"><strong>Momentum</strong></span>
         </div>
-        <section className="sidebar-profile">
-          <span className="account-avatar">{displayName.slice(0, 1).toUpperCase()}</span>
+        <NavLink className="sidebar-profile" to="/profile">
+          <UserAvatar name={displayName} avatarUrl={user.avatar_url} className="account-avatar" />
           <div><strong>{displayName}</strong><span>Level {level}</span></div>
           <span className="streak-pill"><Flame size={13} />{streak}</span>
-        </section>
+        </NavLink>
         <div className="sidebar-xp">
           <div><span>{xp} XP</span><span>Level {level}</span></div>
           <i><b style={{ width: `${stats ? Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100) : 0}%` }} /></i>
@@ -221,10 +227,16 @@ export function App() {
           </div>
           <span className="mobile-streak"><Flame size={15} /> {streak}</span>
           <InboxLink className="mobile-inbox" unread={unreadNotifications} />
+          <NavLink aria-label="Profile" className="mobile-profile" title="Profile" to="/profile">
+            <UserAvatar name={displayName} avatarUrl={user.avatar_url} className="utility-avatar" />
+          </NavLink>
         </header>
         <main className="content">
           <div className="content-inner">
             <div className="workspace-topbar">
+              <NavLink aria-label="Profile" className="workspace-profile" title="Profile" to="/profile">
+                <UserAvatar name={displayName} avatarUrl={user.avatar_url} className="utility-avatar" />
+              </NavLink>
               <InboxLink className="workspace-inbox" unread={unreadNotifications} />
             </div>
             {error && <div className="alert">{error}</div>}
@@ -245,6 +257,21 @@ export function App() {
               <Route path="/progress" element={<AchievementsPage onError={setError} />} />
               <Route path="/statistics" element={<StatisticsPage stats={stats} />} />
               <Route path="/inbox" element={<InboxPage onError={setError} onUnreadChange={setUnreadNotifications} />} />
+              <Route
+                path="/profile"
+                element={(
+                  <ProfilePage
+                    user={user}
+                    stats={stats}
+                    onUserChange={setUser}
+                    onDeleted={() => {
+                      clearWorkspace();
+                      navigate("/login", { replace: true });
+                    }}
+                    onError={setError}
+                  />
+                )}
+              />
               <Route path="/login" element={<Navigate to="/today" replace />} />
               <Route path="*" element={<Navigate to="/today" replace />} />
             </Routes>

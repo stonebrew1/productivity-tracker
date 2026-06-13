@@ -35,8 +35,11 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
       SMTP_USE_SSL: ${SMTP_USE_SSL:-false}
+      UPLOAD_DIR: /app/uploads
     ports:
       - "8000:8000"
+    volumes:
+      - backend_uploads:/app/uploads
     depends_on:
       - db
       - mailpit
@@ -51,3 +54,4 @@ services:
 
 volumes:
   postgres_data:
+  backend_uploads:

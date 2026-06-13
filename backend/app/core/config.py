@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_use_tls: bool = True
     smtp_use_ssl: bool = False
+    upload_dir: str = "/app/uploads"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

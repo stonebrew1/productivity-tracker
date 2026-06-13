@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.auth import EmailVerificationCodeRequest, RegisterRequest
+from app.schemas.user import AccountDeleteRequest, PasswordChangeRequest, ProfileUpdate
 
 
 def test_registration_accepts_name_and_strong_password() -> None:
@@ -37,3 +38,19 @@ def test_email_verification_code_accepts_six_digits() -> None:
 def test_email_verification_code_rejects_invalid_codes(code: str) -> None:
     with pytest.raises(ValidationError):
         EmailVerificationCodeRequest(email="ada@example.com", code=code)
+
+
+def test_profile_update_normalizes_display_name() -> None:
+    payload = ProfileUpdate(display_name="  Ada   Lovelace  ", bio="Building a compiler")
+
+    assert payload.display_name == "Ada Lovelace"
+
+
+def test_password_change_requires_a_strong_new_password() -> None:
+    with pytest.raises(ValidationError):
+        PasswordChangeRequest(current_password="ExistingPass9", new_password="weakpassword")
+
+
+def test_account_deletion_requires_explicit_confirmation() -> None:
+    with pytest.raises(ValidationError):
+        AccountDeleteRequest(password="ExistingPass9", confirmation="delete")

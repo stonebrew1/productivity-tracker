@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../api/client";
+import { UserAvatar } from "../components/UserAvatar";
 import type { AccountabilityCommitment, FeedPost, GamificationDashboard, LeaderboardEntry, Person, PostComment, Profile, SocialNotification } from "../types/domain";
 
 type Props = {
@@ -127,7 +128,7 @@ export function SocialPage({ onError, onUnreadChange }: Props) {
       </header>
 
       <section className="profile-strip">
-        <Avatar name={profile.display_name ?? profile.email} />
+        <Avatar name={profile.display_name ?? profile.email} avatarUrl={profile.avatar_url} />
         <div className="profile-identity">
           <strong>{profile.display_name || profile.email.split("@")[0]}</strong>
           <span>{profile.bio || "Add a short goal to your profile."}</span>
@@ -204,7 +205,7 @@ export function SocialPage({ onError, onUnreadChange }: Props) {
             </div>
           ) : feed.map((post) => (
             <article className="feed-post" key={post.id}>
-              <Avatar name={post.author.display_name ?? post.author.email} />
+              <Avatar name={post.author.display_name ?? post.author.email} avatarUrl={post.author.avatar_url} />
               <div className="feed-copy">
                 <div>
                   <strong>{post.author.display_name || post.author.email.split("@")[0]}</strong>
@@ -251,14 +252,13 @@ export function SocialPage({ onError, onUnreadChange }: Props) {
             {activePeople.map((person) => (
               <div className="active-person" key={person.id}>
                 <span className="presence-dot" />
-                <Avatar name={person.display_name ?? person.email} />
+                <Avatar name={person.display_name ?? person.email} avatarUrl={person.avatar_url} />
                 <div><strong>{person.display_name || person.email.split("@")[0]}</strong><span>{activeLabel(person.last_active_at!)}</span></div>
                 <small><Flame size={12} />{person.current_streak}</small>
               </div>
             ))}
             {activePeople.length === 0 && <p className="muted compact-copy">Add friends to see their recent momentum.</p>}
           </section>
-          <ProfileEditor profile={profile} onSave={(payload) => mutate(() => api.updateProfile(payload))} />
           <section className="people-section">
             <div className="section-heading">
               <h2>People</h2>
@@ -266,7 +266,7 @@ export function SocialPage({ onError, onUnreadChange }: Props) {
             </div>
             {people.map((person) => (
               <div className="person-row" key={person.id}>
-                <Avatar name={person.display_name ?? person.email} />
+                <Avatar name={person.display_name ?? person.email} avatarUrl={person.avatar_url} />
                 <div><strong>{person.display_name || person.email.split("@")[0]}</strong><span>Level {person.level}</span></div>
                 <FriendAction person={person} onMutate={mutate} />
               </div>
@@ -293,7 +293,7 @@ function Commitments({
         const other = item.role === "owner" ? item.partner : item.owner;
         return (
           <div className={`commitment-row ${item.status}`} key={item.id}>
-            <Avatar name={other.display_name ?? other.email} />
+            <Avatar name={other.display_name ?? other.email} avatarUrl={other.avatar_url} />
             <div>
               <strong>{item.task_title}</strong>
               <span>{item.role === "owner" ? `Waiting on ${other.display_name || other.email.split("@")[0]}` : `${item.owner.display_name || item.owner.email.split("@")[0]} invited you`}</span>
@@ -334,7 +334,7 @@ function PostComments({
     <section className="post-comments">
       {!comments ? <p className="muted compact-copy">Loading comments...</p> : comments.map((comment) => (
         <div className="comment-row" key={comment.id}>
-          <Avatar name={comment.author.display_name ?? comment.author.email} />
+          <Avatar name={comment.author.display_name ?? comment.author.email} avatarUrl={comment.author.avatar_url} />
           <div><strong>{comment.author.display_name || comment.author.email.split("@")[0]}</strong><p>{comment.content}</p><time>{relativeTime(comment.created_at)}</time></div>
           {comment.can_delete && <button title="Delete comment" onClick={() => onDelete(comment.id)}><Trash2 size={14} /></button>}
         </div>
@@ -367,7 +367,7 @@ function Notifications({
       </div>
       {notifications.slice(0, 5).map((notification) => (
         <div className={`notification-row ${notification.is_read ? "" : "unread"}`} key={notification.id}>
-          <Avatar name={notification.actor.display_name ?? notification.actor.email} />
+          <Avatar name={notification.actor.display_name ?? notification.actor.email} avatarUrl={notification.actor.avatar_url} />
           <p><strong>{notification.actor.display_name || notification.actor.email.split("@")[0]}</strong> {notification.message}<time>{relativeTime(notification.created_at)}</time></p>
         </div>
       ))}
@@ -418,7 +418,7 @@ function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
       {entries.map((entry) => (
         <div className={`leaderboard-row ${entry.is_current_user ? "current" : ""}`} key={entry.user_id}>
           <span className="leaderboard-rank">{entry.rank === 1 ? <Crown size={15} /> : entry.rank}</span>
-          <Avatar name={entry.display_name ?? entry.email} />
+          <Avatar name={entry.display_name ?? entry.email} avatarUrl={entry.avatar_url} />
           <div><strong>{entry.display_name || entry.email.split("@")[0]}{entry.is_current_user ? " (you)" : ""}</strong><span>Level {entry.level}</span></div>
           <b><Zap size={12} />{entry.weekly_xp}</b>
         </div>
@@ -427,33 +427,8 @@ function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
   );
 }
 
-function ProfileEditor({
-  profile,
-  onSave
-}: {
-  profile: Profile;
-  onSave: (payload: { display_name: string; bio: string }) => Promise<void>;
-}) {
-  const [name, setName] = useState(profile.display_name ?? "");
-  const [bio, setBio] = useState(profile.bio ?? "");
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    await onSave({ display_name: name, bio });
-  }
-
-  return (
-    <form className="profile-editor" onSubmit={submit}>
-      <div className="section-heading"><h2>Edit profile</h2></div>
-      <label>Display name<input value={name} maxLength={80} onChange={(event) => setName(event.target.value)} /></label>
-      <label>Current goal<textarea value={bio} maxLength={500} onChange={(event) => setBio(event.target.value)} /></label>
-      <button>Save profile</button>
-    </form>
-  );
-}
-
-function Avatar({ name }: { name: string }) {
-  return <span className="avatar" aria-hidden="true">{name.trim().slice(0, 1).toUpperCase()}</span>;
+function Avatar({ name, avatarUrl }: { name: string; avatarUrl?: string | null }) {
+  return <UserAvatar name={name} avatarUrl={avatarUrl} />;
 }
 
 function relativeTime(value: string) {

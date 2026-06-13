@@ -1,12 +1,15 @@
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import APIRouter, Cookie, Depends, File, HTTPException, Response, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
-from app.core.database import get_db
-from app.core.security import hash_refresh_token
-from app.models.user import User
 from app.core.config import get_settings
+from app.core.database import get_db
+from app.core.security import hash_password, hash_refresh_token, verify_password
+from app.models.user import User
 from app.schemas.auth import (
     EmailVerificationRequest,
     EmailVerificationCodeRequest,
@@ -18,7 +21,7 @@ from app.schemas.auth import (
     TokenResponse,
     VerificationSessionResponse,
 )
-from app.schemas.user import UserRead
+from app.schemas.user import AccountDeleteRequest, PasswordChangeRequest, ProfileUpdate, UserRead
 from app.services.auth_service import (
     IssuedSession,
     confirm_email,
@@ -143,3 +146,105 @@ async def logout_user(
 @router.get("/me", response_model=UserRead)
 async def read_me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+
+@router.put("/me", response_model=UserRead)
+async def update_me(
+    payload: ProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        normalized = value.strip() if isinstance(value, str) else value
+        setattr(current_user, field, normalized or None)
+    await db.commit()
+    return current_user
+
+
+@router.post("/me/avatar", response_model=UserRead)
+async def upload_avatar(
+    avatar: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    allowed_types = {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+    }
+    extension = allowed_types.get(avatar.content_type or "")
+    if not extension:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Avatar must be a JPEG, PNG, or WebP image.",
+        )
+    content = await avatar.read(2 * 1024 * 1024 + 1)
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Avatar file is empty.",
+        )
+    if len(content) > 2 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Avatar cannot exceed 2 MB.",
+        )
+    avatar_dir = Path(settings.upload_dir) / "avatars"
+    avatar_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{current_user.id}-{uuid4().hex}{extension}"
+    target = avatar_dir / filename
+    target.write_bytes(content)
+    delete_local_avatar(current_user.avatar_url)
+    current_user.avatar_url = f"/uploads/avatars/{filename}"
+    await db.commit()
+    return current_user
+
+
+@router.delete("/me/avatar", response_model=UserRead)
+async def remove_avatar(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    delete_local_avatar(current_user.avatar_url)
+    current_user.avatar_url = None
+    await db.commit()
+    return current_user
+
+
+@router.post("/change-password", status_code=204)
+async def change_password(
+    payload: PasswordChangeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect.")
+    if payload.current_password == payload.new_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Choose a different password.")
+    current_user.password_hash = hash_password(payload.new_password)
+    await db.commit()
+
+
+@router.delete("/account", status_code=204)
+async def delete_account(
+    payload: AccountDeleteRequest,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    if not verify_password(payload.password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password is incorrect.")
+    delete_local_avatar(current_user.avatar_url)
+    await db.delete(current_user)
+    await db.commit()
+    response.delete_cookie(settings.refresh_cookie_name, path="/api/auth")
+
+
+def delete_local_avatar(avatar_url: str | None) -> None:
+    prefix = "/uploads/avatars/"
+    if not avatar_url or not avatar_url.startswith(prefix):
+        return
+    filename = Path(avatar_url).name
+    target = Path(settings.upload_dir) / "avatars" / filename
+    if target.is_file():
+        target.unlink()

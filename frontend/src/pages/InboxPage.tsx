@@ -2,6 +2,7 @@ import { Bell, Check, CheckCheck, Inbox, UserCheck, UserX } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { api } from "../api/client";
+import { UserAvatar } from "../components/UserAvatar";
 import type { SocialNotification } from "../types/domain";
 
 type Props = {
@@ -70,7 +71,10 @@ export function InboxPage({ onError, onUnreadChange }: Props) {
         {!loading && visible.map((notification) => (
           <article className={`inbox-row ${notification.is_read ? "" : "unread"}`} key={notification.id}>
             <span className="inbox-icon">{notification.kind === "friend_request" ? <UserCheck size={18} /> : <Bell size={18} />}</span>
-            <span className="avatar">{(notification.actor.display_name || notification.actor.email).slice(0, 1).toUpperCase()}</span>
+            <UserAvatar
+              name={notification.actor.display_name || notification.actor.email}
+              avatarUrl={notification.actor.avatar_url}
+            />
             <div className="inbox-copy">
               <p><strong>{notification.actor.display_name || notification.actor.email.split("@")[0]}</strong> {notification.message}</p>
               <time>{relativeTime(notification.created_at)}</time>

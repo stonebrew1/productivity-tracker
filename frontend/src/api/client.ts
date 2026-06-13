@@ -96,7 +96,9 @@ async function request<T>(
   retryAfterRefresh = true
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  headers.set("Content-Type", "application/json");
+  if (!(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
@@ -160,6 +162,24 @@ export const api = {
       false
     ),
   me: () => request<User>("/auth/me"),
+  updateMe: (payload: { display_name: string | null; bio: string | null }) =>
+    request<User>("/auth/me", { method: "PUT", body: JSON.stringify(payload) }),
+  uploadAvatar: (avatar: File) => {
+    const form = new FormData();
+    form.append("avatar", avatar);
+    return request<User>("/auth/me/avatar", { method: "POST", body: form });
+  },
+  removeAvatar: () => request<User>("/auth/me/avatar", { method: "DELETE" }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<void>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+    }),
+  deleteAccount: (password: string, confirmation: string) =>
+    request<void>("/auth/account", {
+      method: "DELETE",
+      body: JSON.stringify({ password, confirmation })
+    }),
   categories: () => request<Category[]>("/categories"),
   createCategory: (name: string) =>
     request<Category>("/categories", { method: "POST", body: JSON.stringify({ name }) }),
@@ -310,3 +330,9 @@ export const api = {
     return request<AnalyticsReport>(`/statistics/analytics?${params}`);
   }
 };
+
+export function resolveAssetUrl(path: string | null) {
+  if (!path) return null;
+  if (/^https?:\/\//.test(path)) return path;
+  return `${API_URL.replace(/\/api$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
+}
