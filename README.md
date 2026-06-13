@@ -71,7 +71,7 @@ hostname on port `8000`, and the backend accepts private-network browser origins
 
 Authentication uses short-lived signed JWT access tokens and rotating opaque refresh tokens. Access tokens are kept in browser memory; refresh tokens are stored as hashes and delivered only through an `HttpOnly` cookie. Set a unique `SECRET_KEY` in production and enable `REFRESH_COOKIE_SECURE=true` behind HTTPS.
 
-New registrations require a display name, a strong password, and email confirmation before login. Development uses `EMAIL_DELIVERY_MODE=console` and returns a local verification link to the registration screen. For deployment, set `EMAIL_DELIVERY_MODE=smtp`, configure the SMTP variables in `backend/.env.example`, and set `FRONTEND_ORIGIN` to the public HTTPS URL.
+New registrations require a display name, a strong password, and email confirmation before login. Docker development sends messages through Mailpit; open `http://localhost:8025` to inspect the local inbox. For real delivery, configure the SMTP variables in `backend/.env.example`, set `FRONTEND_ORIGIN` to the public HTTPS URL, and use `SMTP_USE_SSL=true` for implicit TLS providers or `SMTP_USE_TLS=true` for STARTTLS.
 
 Task create, update, completion, status-change, and deletion events are stored in `task_events`. History remains available after task deletion and can be filtered by task, event type, and date range.
 

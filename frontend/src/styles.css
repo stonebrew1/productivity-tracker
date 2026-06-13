@@ -180,7 +180,12 @@ p { color: var(--muted); line-height: 1.6; }
 .verification-prompt p { margin: 0; font-size: .83rem; }
 .verification-prompt p strong { color: var(--text); }
 .verification-prompt > a, .verification-screen a { color: #a78bfa; font-size: .75rem; font-weight: 700; }
-.verification-prompt > button:not(.text-button) { width: 100%; margin-top: 5px; }
+.verification-resend {
+  display: inline-flex; width: auto; min-height: 40px; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid rgba(139,92,246,.38); border-radius: 7px; background: var(--violet-dim);
+  color: #c4b5fd; padding: 0 14px; font-size: .72rem; font-weight: 700;
+}
+.verification-resend:hover { border-color: var(--violet-light); background: rgba(124,58,237,.24); color: white; }
 .verification-prompt > .text-button { justify-self: center; }
 .verification-screen { display: grid; min-height: 100vh; place-items: center; align-content: center; gap: 35px; padding: 24px; }
 .verification-screen > .brand { position: absolute; top: 28px; left: 30px; }

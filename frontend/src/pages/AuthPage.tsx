@@ -102,7 +102,9 @@ export function AuthPage({ onLogin, onRegister, onResend, error, setError }: Pro
             <p>We sent a confirmation link to <strong>{registration.email}</strong>. Confirm it before signing in.</p>
             {developmentVerificationUrl && <a href={developmentVerificationUrl}>Open development verification link</a>}
             {error && <div className="alert">{error}</div>}
-            <button disabled={busy} onClick={() => void resend()}>{busy ? "Sending..." : "Resend email"}</button>
+            <button className="verification-resend" disabled={busy} onClick={() => void resend()}>
+              <Mail size={16} />{busy ? "Sending..." : "Resend verification email"}
+            </button>
             <button className="text-button" onClick={() => { setRegistration(null); setIsRegister(false); }}>Back to sign in</button>
           </div>
         ) : (

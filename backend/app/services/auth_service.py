@@ -57,8 +57,15 @@ async def register(payload: RegisterRequest, db: AsyncSession) -> RegistrationRe
     await db.flush()
     db.add(UserStats(user_id=user.id))
     _, url = issue_email_verification(user)
-    await db.commit()
-    await send_verification_email(user.email, user.display_name, url)
+    try:
+        await send_verification_email(user.email, user.display_name, url)
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to send confirmation email. Try again shortly.",
+        ) from exc
     settings = get_settings()
     return RegistrationResponse(
         message="Account created. Check your email to confirm your account.",
@@ -113,8 +120,17 @@ async def resend_verification(email: str, db: AsyncSession) -> MessageResponse:
     if not user or user.is_email_verified:
         return MessageResponse(message=generic_message)
     _, url = issue_email_verification(user)
-    await db.commit()
-    await send_verification_email(user.email, user.display_name or user.email.split("@")[0], url)
+    try:
+        await send_verification_email(
+            user.email, user.display_name or user.email.split("@")[0], url
+        )
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to send confirmation email. Try again shortly.",
+        ) from exc
     return MessageResponse(
         message=generic_message,
         verification_url=url if get_settings().email_delivery_mode == "console" else None,

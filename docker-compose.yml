@@ -1,4 +1,10 @@
 services:
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   db:
     image: postgres:16
     environment:
@@ -20,12 +26,20 @@ services:
       JWT_AUDIENCE: momentum-web
       REFRESH_COOKIE_SECURE: "false"
       FRONTEND_ORIGIN: http://localhost:5173
-      EMAIL_DELIVERY_MODE: console
+      EMAIL_DELIVERY_MODE: ${EMAIL_DELIVERY_MODE:-smtp}
       EMAIL_VERIFICATION_EXPIRE_HOURS: "24"
+      EMAIL_FROM: ${EMAIL_FROM:-Momentum <no-reply@momentum.local>}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      SMTP_USE_SSL: ${SMTP_USE_SSL:-false}
     ports:
       - "8000:8000"
     depends_on:
       - db
+      - mailpit
 
   frontend:
     build:

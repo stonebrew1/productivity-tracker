@@ -15,8 +15,9 @@ def _send_smtp(recipient: str, subject: str, body: str) -> None:
     message["To"] = recipient
     message["Subject"] = subject
     message.set_content(body)
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=15) as server:
-        if settings.smtp_use_tls:
+    smtp_class = smtplib.SMTP_SSL if settings.smtp_use_ssl else smtplib.SMTP
+    with smtp_class(settings.smtp_host, settings.smtp_port, timeout=15) as server:
+        if settings.smtp_use_tls and not settings.smtp_use_ssl:
             server.starttls()
         if settings.smtp_username:
             server.login(settings.smtp_username, settings.smtp_password)
