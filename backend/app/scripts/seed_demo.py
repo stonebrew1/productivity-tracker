@@ -104,6 +104,7 @@ async def seed_demo() -> None:
             user.password_hash = hash_password(DEMO_PASSWORD)
         user.display_name = "Alex Morgan"
         user.bio = "Building a strong bachelor project through small, consistent wins."
+        user.is_email_verified = True
 
         peers: list[User] = []
         for email, display_name, bio in SOCIAL_USERS:
@@ -115,6 +116,7 @@ async def seed_demo() -> None:
             peer.password_hash = hash_password(DEMO_PASSWORD)
             peer.display_name = display_name
             peer.bio = bio
+            peer.is_email_verified = True
             peers.append(peer)
 
         seeded_users = [user, *peers]

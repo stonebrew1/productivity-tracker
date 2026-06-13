@@ -10,7 +10,8 @@ import { GroupsPage } from "./pages/GroupsPage";
 import { StatisticsPage } from "./pages/StatisticsPage";
 import { SocialPage } from "./pages/SocialPage";
 import { TasksPage } from "./pages/TasksPage";
-import type { Achievement, Category, Stats, Task, User } from "./types/domain";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
+import type { Achievement, Category, RegistrationResponse, Stats, Task, User } from "./types/domain";
 
 const NAV_ITEMS = [
   { path: "/today", label: "Today", icon: Home },
@@ -55,14 +56,20 @@ export function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleLogin(email: string, password: string, isRegister: boolean) {
+  async function handleLogin(email: string, password: string) {
     setError(null);
-    if (isRegister) await api.register(email, password);
     const tokens = await api.login(email, password);
     setTokens(tokens);
     await loadWorkspace();
     const requestedPath = (location.state as { from?: string } | null)?.from;
     navigate(requestedPath && requestedPath !== "/login" ? requestedPath : "/today", { replace: true });
+  }
+
+  async function handleRegister(
+    displayName: string, email: string, password: string
+  ): Promise<RegistrationResponse> {
+    setError(null);
+    return api.register(displayName, email, password);
   }
 
   async function handleLogout() {
@@ -88,7 +95,11 @@ export function App() {
   if (!user) {
     return (
       <Routes>
-        <Route path="/login" element={<AuthPage onSubmit={handleLogin} error={error} setError={setError} />} />
+        <Route
+          path="/login"
+          element={<AuthPage onLogin={handleLogin} onRegister={handleRegister} onResend={api.resendVerification} error={error} setError={setError} />}
+        />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="*" element={<Navigate to="/login" replace state={{ from: location.pathname }} />} />
       </Routes>
     );

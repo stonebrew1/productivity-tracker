@@ -5,9 +5,25 @@ from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.user import User
 from app.core.config import get_settings
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+from app.schemas.auth import (
+    EmailVerificationRequest,
+    LoginRequest,
+    MessageResponse,
+    RegisterRequest,
+    RegistrationResponse,
+    ResendVerificationRequest,
+    TokenResponse,
+)
 from app.schemas.user import UserRead
-from app.services.auth_service import IssuedSession, login, logout_session, refresh_session, register
+from app.services.auth_service import (
+    IssuedSession,
+    confirm_email,
+    login,
+    logout_session,
+    refresh_session,
+    register,
+    resend_verification,
+)
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -26,9 +42,27 @@ def set_refresh_cookie(response: Response, session: IssuedSession) -> None:
     )
 
 
-@router.post("/register", response_model=UserRead, status_code=201)
-async def register_user(payload: RegisterRequest, db: AsyncSession = Depends(get_db)) -> User:
+@router.post("/register", response_model=RegistrationResponse, status_code=201)
+async def register_user(
+    payload: RegisterRequest, db: AsyncSession = Depends(get_db)
+) -> RegistrationResponse:
     return await register(payload, db)
+
+
+@router.post("/verify-email", response_model=MessageResponse)
+async def verify_email(
+    payload: EmailVerificationRequest,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    return await confirm_email(payload.token, db)
+
+
+@router.post("/resend-verification", response_model=MessageResponse)
+async def resend_confirmation(
+    payload: ResendVerificationRequest,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    return await resend_verification(str(payload.email), db)
 
 
 @router.post("/login", response_model=TokenResponse)

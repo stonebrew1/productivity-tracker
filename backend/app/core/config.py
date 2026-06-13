@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     refresh_cookie_secure: bool = False
     refresh_cookie_name: str = "momentum_refresh"
     frontend_origin: str = "http://localhost:5173"
+    email_verification_expire_hours: int = 24
+    email_delivery_mode: str = "console"
+    email_from: str = "Momentum <no-reply@momentum.local>"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_use_tls: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

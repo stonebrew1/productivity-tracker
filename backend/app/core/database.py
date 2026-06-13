@@ -42,6 +42,45 @@ async def create_database_schema() -> None:
                 await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT"))
                 await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)"))
                 await conn.execute(
+                    text(
+                        """
+                        DO $$
+                        BEGIN
+                            IF NOT EXISTS (
+                                SELECT 1
+                                FROM information_schema.columns
+                                WHERE table_name = 'users'
+                                  AND column_name = 'is_email_verified'
+                            ) THEN
+                                ALTER TABLE users
+                                ADD COLUMN is_email_verified BOOLEAN NOT NULL DEFAULT TRUE;
+                                ALTER TABLE users
+                                ALTER COLUMN is_email_verified SET DEFAULT FALSE;
+                            END IF;
+                        END
+                        $$;
+                        """
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
+                        "email_verification_token VARCHAR(64)"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
+                        "email_verification_expires_at TIMESTAMPTZ"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS ix_users_email_verification_token "
+                        "ON users (email_verification_token)"
+                    )
+                )
+                await conn.execute(
                     text("ALTER TABLE user_stats ADD COLUMN IF NOT EXISTS xp_total INTEGER NOT NULL DEFAULT 0")
                 )
                 await conn.execute(

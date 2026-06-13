@@ -21,6 +21,7 @@ import type {
   PostComment,
   Profile,
   ProductivityGroup,
+  RegistrationResponse,
   SocialNotification,
   Stats,
   Task,
@@ -103,8 +104,11 @@ async function request<T>(
 }
 
 export const api = {
-  register: (email: string, password: string) =>
-    request<User>("/auth/register", { method: "POST", body: JSON.stringify({ email, password }) }),
+  register: (displayName: string, email: string, password: string) =>
+    request<RegistrationResponse>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ display_name: displayName, email, password })
+    }),
   login: (email: string, password: string) =>
     request<TokenResponse>(
       "/auth/login",
@@ -113,6 +117,18 @@ export const api = {
     ),
   restoreSession: () => refreshAccessToken(),
   logout: () => request<void>("/auth/logout", { method: "POST" }, false),
+  verifyEmail: (token: string) =>
+    request<{ message: string; verification_url: string | null }>(
+      "/auth/verify-email",
+      { method: "POST", body: JSON.stringify({ token }) },
+      false
+    ),
+  resendVerification: (email: string) =>
+    request<{ message: string; verification_url: string | null }>(
+      "/auth/resend-verification",
+      { method: "POST", body: JSON.stringify({ email }) },
+      false
+    ),
   me: () => request<User>("/auth/me"),
   categories: () => request<Category[]>("/categories"),
   createCategory: (name: string) =>

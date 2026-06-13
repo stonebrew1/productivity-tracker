@@ -21,6 +21,8 @@
   --danger: #ef4444;
 }
 
+@keyframes spin { to { transform: rotate(360deg); } }
+
 * { box-sizing: border-box; }
 html { overflow-y: scroll; scrollbar-gutter: stable; background: var(--bg); }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--bg); color: var(--text); }
@@ -138,6 +140,33 @@ p { color: var(--muted); line-height: 1.6; }
 .auth-input:focus-within { border-color: var(--violet-light); box-shadow: 0 0 0 3px var(--violet-dim); }
 .auth-input input { border: 0; background: transparent; box-shadow: none; }
 .auth-panel form > button { margin-top: 4px; }
+.password-strength { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin-top: -8px; }
+.password-strength > div { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; }
+.password-strength i { height: 4px; border-radius: 4px; background: var(--surface-3); }
+.password-strength span { color: var(--muted); font-size: .62rem; }
+.password-strength.strength-1 i:nth-child(-n+1), .password-strength.strength-2 i:nth-child(-n+2) { background: var(--danger); }
+.password-strength.strength-3 i:nth-child(-n+3) { background: var(--amber); }
+.password-strength.strength-4 i { background: var(--emerald); }
+.password-strength.strength-4 span { color: var(--emerald); }
+.password-requirements { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px 10px; margin-top: -9px; }
+.password-requirements span { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: .61rem; }
+.password-requirements span.met { color: var(--emerald); }
+.verification-prompt { display: grid; justify-items: start; gap: 12px; }
+.verification-prompt > span, .verification-state { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 8px; background: var(--violet-dim); color: #a78bfa; }
+.verification-prompt h2 { margin: 4px 0 0; font-size: 1.7rem; }
+.verification-prompt p { margin: 0; font-size: .83rem; }
+.verification-prompt p strong { color: var(--text); }
+.verification-prompt > a, .verification-screen a { color: #a78bfa; font-size: .75rem; font-weight: 700; }
+.verification-prompt > button:not(.text-button) { width: 100%; margin-top: 5px; }
+.verification-prompt > .text-button { justify-self: center; }
+.verification-screen { display: grid; min-height: 100vh; place-items: center; align-content: center; gap: 35px; padding: 24px; }
+.verification-screen > .brand { position: absolute; top: 28px; left: 30px; }
+.verification-screen section { display: grid; width: min(440px,100%); justify-items: center; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); padding: 34px; text-align: center; }
+.verification-screen h1 { margin: 18px 0 8px; font-size: 1.55rem; }
+.verification-screen p { margin-bottom: 20px; font-size: .82rem; }
+.verification-state.loading svg { animation: spin 1s linear infinite; }
+.verification-state.success { background: rgba(16,185,129,.12); color: var(--emerald); }
+.verification-state.error { background: rgba(239,68,68,.12); color: #f87171; }
 .auth-switch { margin-top: 20px; text-align: center; font-size: .83rem; }
 .text-button { border: 0; background: transparent; color: #a78bfa; padding: 4px 7px; font-weight: 700; }
 .auth-mobile-brand { display: none; }

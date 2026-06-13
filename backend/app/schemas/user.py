@@ -12,6 +12,7 @@ class UserRead(BaseModel):
     display_name: str | None
     bio: str | None
     avatar_url: str | None
+    is_email_verified: bool
     role: UserRole
     created_at: datetime
 

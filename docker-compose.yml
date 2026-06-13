@@ -20,6 +20,8 @@ services:
       JWT_AUDIENCE: momentum-web
       REFRESH_COOKIE_SECURE: "false"
       FRONTEND_ORIGIN: http://localhost:5173
+      EMAIL_DELIVERY_MODE: console
+      EMAIL_VERIFICATION_EXPIRE_HOURS: "24"
     ports:
       - "8000:8000"
     depends_on:

@@ -1,28 +1,79 @@
-import { CheckCircle2, Flame, KeyRound, Mail, Trophy, Users, Zap } from "lucide-react";
+import { Check, CheckCircle2, Flame, KeyRound, Mail, Trophy, UserRound, Users, Zap } from "lucide-react";
 import { FormEvent, useState } from "react";
 
+import type { RegistrationResponse } from "../types/domain";
+
 type Props = {
-  onSubmit: (email: string, password: string, isRegister: boolean) => Promise<void>;
+  onLogin: (email: string, password: string) => Promise<void>;
+  onRegister: (displayName: string, email: string, password: string) => Promise<RegistrationResponse>;
+  onResend: (email: string) => Promise<{ message: string; verification_url: string | null }>;
   error: string | null;
   setError: (error: string | null) => void;
 };
 
-export function AuthPage({ onSubmit, error, setError }: Props) {
+const passwordChecks = [
+  ["At least 10 characters", (value: string) => value.length >= 10],
+  ["Lowercase letter", (value: string) => /[a-z]/.test(value)],
+  ["Uppercase letter", (value: string) => /[A-Z]/.test(value)],
+  ["Number", (value: string) => /\d/.test(value)]
+] as const;
+
+export function AuthPage({ onLogin, onRegister, onResend, error, setError }: Props) {
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("demo@example.com");
   const [password, setPassword] = useState("password123");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isRegister, setIsRegister] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [registration, setRegistration] = useState<RegistrationResponse | null>(null);
+  const strength = passwordChecks.filter(([, check]) => check(password)).length;
+  const developmentVerificationUrl = registration?.verification_url
+    ? (() => {
+        const url = new URL(registration.verification_url);
+        return `${window.location.origin}${url.pathname}${url.search}`;
+      })()
+    : null;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      await onSubmit(email, password, isRegister);
+      if (isRegister) {
+        if (password !== confirmPassword) throw new Error("Passwords do not match.");
+        if (strength < passwordChecks.length) throw new Error("Password does not meet all requirements.");
+        setRegistration(await onRegister(displayName, email, password));
+      } else {
+        await onLogin(email, password);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function resend() {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await onResend(registration?.email ?? email);
+      setRegistration((current) => current ? { ...current, ...result } : current);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to resend verification email");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function switchMode() {
+    setIsRegister((value) => !value);
+    setRegistration(null);
+    setConfirmPassword("");
+    setError(null);
+    if (!isRegister) {
+      setEmail("");
+      setPassword("");
     }
   }
 
@@ -44,14 +95,41 @@ export function AuthPage({ onSubmit, error, setError }: Props) {
       </section>
       <section className="auth-panel">
         <div className="auth-mobile-brand"><span className="brand-mark"><Zap size={19} fill="currentColor" /></span><strong>Momentum</strong></div>
-        <header><h2>{isRegister ? "Create your account" : "Welcome back"}</h2><p>{isRegister ? "Start building momentum today." : "Continue where you left off."}</p></header>
-        <form onSubmit={handleSubmit}>
-          <label>Email<span className="auth-input"><Mail size={17} /><input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required /></span></label>
-          <label>Password<span className="auth-input"><KeyRound size={17} /><input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required /></span></label>
-          {error && <div className="alert">{error}</div>}
-          <button disabled={busy}>{busy ? "Working..." : isRegister ? "Create account" : "Sign in"}</button>
-        </form>
-        <p className="auth-switch">{isRegister ? "Already have an account?" : "New to Momentum?"}<button className="text-button" onClick={() => setIsRegister((value) => !value)}>{isRegister ? "Sign in" : "Create account"}</button></p>
+        {registration ? (
+          <div className="verification-prompt">
+            <span><Mail size={24} /></span>
+            <h2>Check your email</h2>
+            <p>We sent a confirmation link to <strong>{registration.email}</strong>. Confirm it before signing in.</p>
+            {developmentVerificationUrl && <a href={developmentVerificationUrl}>Open development verification link</a>}
+            {error && <div className="alert">{error}</div>}
+            <button disabled={busy} onClick={() => void resend()}>{busy ? "Sending..." : "Resend email"}</button>
+            <button className="text-button" onClick={() => { setRegistration(null); setIsRegister(false); }}>Back to sign in</button>
+          </div>
+        ) : (
+          <>
+            <header><h2>{isRegister ? "Create your account" : "Welcome back"}</h2><p>{isRegister ? "Start building momentum today." : "Continue where you left off."}</p></header>
+            <form onSubmit={handleSubmit}>
+              {isRegister && <label>Name<span className="auth-input"><UserRound size={17} /><input autoComplete="name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} required /></span></label>}
+              <label>Email<span className="auth-input"><Mail size={17} /><input autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} type="email" required /></span></label>
+              <label>Password<span className="auth-input"><KeyRound size={17} /><input autoComplete={isRegister ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} type="password" required /></span></label>
+              {isRegister && (
+                <>
+                  <div className={`password-strength strength-${strength}`}>
+                    <div>{passwordChecks.map(([label]) => <i key={label} />)}</div>
+                    <span>{strength < 2 ? "Weak" : strength < 4 ? "Getting stronger" : "Strong"}</span>
+                  </div>
+                  <div className="password-requirements">
+                    {passwordChecks.map(([label, check]) => <span className={check(password) ? "met" : ""} key={label}><Check size={12} />{label}</span>)}
+                  </div>
+                  <label>Confirm password<span className="auth-input"><KeyRound size={17} /><input autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} type="password" required /></span></label>
+                </>
+              )}
+              {error && <div className="alert">{error}</div>}
+              <button disabled={busy}>{busy ? "Working..." : isRegister ? "Create account" : "Sign in"}</button>
+            </form>
+            <p className="auth-switch">{isRegister ? "Already have an account?" : "New to Momentum?"}<button className="text-button" onClick={switchMode}>{isRegister ? "Sign in" : "Create account"}</button></p>
+          </>
+        )}
       </section>
     </main>
   );

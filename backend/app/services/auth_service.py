@@ -14,24 +14,57 @@ from app.core.security import (
     hash_refresh_token,
     verify_password,
 )
+from app.services.email_service import send_verification_email
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.models.user_stats import UserStats
-from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+from app.schemas.auth import (
+    LoginRequest,
+    MessageResponse,
+    RegisterRequest,
+    RegistrationResponse,
+    TokenResponse,
+)
 
 
-async def register(payload: RegisterRequest, db: AsyncSession) -> User:
-    existing_user = await db.scalar(select(User).where(User.email == payload.email))
+def verification_url(token: str) -> str:
+    return f"{get_settings().frontend_origin.rstrip('/')}/verify-email?token={token}"
+
+
+def issue_email_verification(user: User) -> tuple[str, str]:
+    settings = get_settings()
+    raw_token = create_refresh_token()
+    user.email_verification_token = hash_refresh_token(raw_token)
+    user.email_verification_expires_at = datetime.now(timezone.utc) + timedelta(
+        hours=settings.email_verification_expire_hours
+    )
+    return raw_token, verification_url(raw_token)
+
+
+async def register(payload: RegisterRequest, db: AsyncSession) -> RegistrationResponse:
+    email = str(payload.email).lower()
+    existing_user = await db.scalar(select(User).where(User.email == email))
     if existing_user:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email is already registered.")
 
-    user = User(email=payload.email, password_hash=hash_password(payload.password))
+    user = User(
+        email=email,
+        display_name=payload.display_name,
+        password_hash=hash_password(payload.password),
+        is_email_verified=False,
+    )
     db.add(user)
     await db.flush()
     db.add(UserStats(user_id=user.id))
+    _, url = issue_email_verification(user)
     await db.commit()
-    await db.refresh(user)
-    return user
+    await send_verification_email(user.email, user.display_name, url)
+    settings = get_settings()
+    return RegistrationResponse(
+        message="Account created. Check your email to confirm your account.",
+        email=user.email,
+        verification_url=url if settings.email_delivery_mode == "console" else None,
+    )
 
 
 @dataclass(frozen=True)
@@ -41,10 +74,51 @@ class IssuedSession:
 
 
 async def login(payload: LoginRequest, db: AsyncSession) -> IssuedSession:
-    user = await db.scalar(select(User).where(User.email == payload.email))
+    user = await db.scalar(select(User).where(User.email == str(payload.email).lower()))
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
+    if not user.is_email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Confirm your email before signing in.",
+        )
     return await issue_tokens(user, db)
+
+
+async def confirm_email(token: str, db: AsyncSession) -> MessageResponse:
+    token_digest = hash_refresh_token(token)
+    user = await db.scalar(
+        select(User).where(User.email_verification_token == token_digest)
+    )
+    now = datetime.now(timezone.utc)
+    if (
+        not user
+        or not user.email_verification_expires_at
+        or user.email_verification_expires_at <= now
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification link is invalid or expired.",
+        )
+    user.is_email_verified = True
+    user.email_verification_token = None
+    user.email_verification_expires_at = None
+    await db.commit()
+    return MessageResponse(message="Email confirmed. You can now sign in.")
+
+
+async def resend_verification(email: str, db: AsyncSession) -> MessageResponse:
+    user = await db.scalar(select(User).where(User.email == email.lower()))
+    generic_message = "If the account exists and is not confirmed, a new email has been sent."
+    if not user or user.is_email_verified:
+        return MessageResponse(message=generic_message)
+    _, url = issue_email_verification(user)
+    await db.commit()
+    await send_verification_email(user.email, user.display_name or user.email.split("@")[0], url)
+    return MessageResponse(
+        message=generic_message,
+        verification_url=url if get_settings().email_delivery_mode == "console" else None,
+    )
 
 
 async def issue_tokens(

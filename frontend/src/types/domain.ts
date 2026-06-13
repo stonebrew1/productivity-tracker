@@ -7,6 +7,7 @@ export type User = {
   display_name: string | null;
   bio: string | null;
   avatar_url: string | null;
+  is_email_verified: boolean;
   role: "user" | "admin";
   created_at: string;
 };
@@ -396,4 +397,15 @@ export type TokenResponse = {
   access_token: string;
   token_type: string;
   expires_in: number;
+};
+
+export type RegistrationResponse = {
+  message: string;
+  email: string;
+  verification_url: string | null;
+};
+
+export type AuthMessageResponse = {
+  message: string;
+  verification_url: string | null;
 };
