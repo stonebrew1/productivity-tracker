@@ -7,9 +7,11 @@ import { UserAvatar } from "./components/UserAvatar";
 import { AchievementsPage } from "./pages/AchievementsPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { GroupsPage } from "./pages/GroupsPage";
 import { InboxPage } from "./pages/InboxPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { StatisticsPage } from "./pages/StatisticsPage";
 import { SocialPage } from "./pages/SocialPage";
 import { TasksPage } from "./pages/TasksPage";
@@ -40,7 +42,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const isVerificationRoute = location.pathname === "/verify-email";
+  const isStandaloneAuthRoute = ["/verify-email", "/forgot-password", "/reset-password"].includes(location.pathname);
 
   async function loadWorkspace() {
     setError(null);
@@ -75,7 +77,7 @@ export function App() {
   }
 
   useEffect(() => {
-    if (isVerificationRoute) {
+    if (isStandaloneAuthRoute) {
       setLoading(false);
       return;
     }
@@ -83,7 +85,7 @@ export function App() {
       .then((restored) => restored ? loadWorkspace() : undefined)
       .catch(() => clearTokens())
       .finally(() => setLoading(false));
-  }, [isVerificationRoute]);
+  }, [isStandaloneAuthRoute]);
 
   useEffect(() => {
     return subscribeToSessionChanges((tokens) => {
@@ -147,10 +149,12 @@ export function App() {
   }
 
   if (loading) return <div className="loading">Loading workspace...</div>;
-  if (isVerificationRoute) {
+  if (isStandaloneAuthRoute) {
     return (
       <Routes>
         <Route path="/verify-email" element={<VerifyEmailPage onVerified={handleVerifiedSession} />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
     );
   }

@@ -161,6 +161,22 @@ export const api = {
       { method: "POST", body: JSON.stringify({ email }) },
       false
     ),
+  forgotPassword: (email: string) =>
+    request<{ message: string; verification_url: string | null }>(
+      "/auth/forgot-password",
+      { method: "POST", body: JSON.stringify({ email }) },
+      false
+    ),
+  resetPassword: (token: string, newPassword: string) =>
+    request<{ message: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, new_password: newPassword })
+    }, false),
+  resetPasswordCode: (email: string, code: string, newPassword: string) =>
+    request<{ message: string }>("/auth/reset-password-code", {
+      method: "POST",
+      body: JSON.stringify({ email, code, new_password: newPassword })
+    }, false),
   me: () => request<User>("/auth/me"),
   updateMe: (payload: { display_name: string | null; bio: string | null }) =>
     request<User>("/auth/me", { method: "PUT", body: JSON.stringify(payload) }),

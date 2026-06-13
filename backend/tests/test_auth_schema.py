@@ -1,7 +1,12 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.auth import EmailVerificationCodeRequest, RegisterRequest
+from app.schemas.auth import (
+    EmailVerificationCodeRequest,
+    RegisterRequest,
+    ResetPasswordCodeRequest,
+    ResetPasswordRequest,
+)
 from app.schemas.user import AccountDeleteRequest, PasswordChangeRequest, ProfileUpdate
 
 
@@ -54,3 +59,18 @@ def test_password_change_requires_a_strong_new_password() -> None:
 def test_account_deletion_requires_explicit_confirmation() -> None:
     with pytest.raises(ValidationError):
         AccountDeleteRequest(password="ExistingPass9", confirmation="delete")
+
+
+def test_password_reset_accepts_token_and_strong_password() -> None:
+    payload = ResetPasswordRequest(token="a" * 64, new_password="NewFocused9")
+
+    assert payload.new_password == "NewFocused9"
+
+
+def test_password_reset_code_requires_six_digits() -> None:
+    with pytest.raises(ValidationError):
+        ResetPasswordCodeRequest(
+            email="ada@example.com",
+            code="12A456",
+            new_password="NewFocused9",
+        )

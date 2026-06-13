@@ -38,6 +38,9 @@ hostname on port `8000`, and the backend accepts private-network browser origins
 - `DELETE /api/auth/me/avatar`
 - `POST /api/auth/change-password`
 - `DELETE /api/auth/account`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
+- `POST /api/auth/reset-password-code`
 - `GET/POST /api/categories`
 - `GET/POST /api/tasks`
 - `GET /api/tasks/history`
@@ -98,6 +101,8 @@ docker compose -p productivity-tracker logs -f backend
 SMTP logs report connection, TLS, authentication, send progress, and exceptions without printing the password, verification link, or confirmation code.
 
 Authenticated users can manage their identity and account from `/profile`. Avatar files are limited to JPEG, PNG, or WebP under 2 MB and are persisted in the Docker `backend_uploads` volume. The page also supports profile editing, password changes, and password-confirmed permanent account deletion.
+
+Password recovery is available from the sign-in screen. Reset emails contain an expiring magic link and six-digit fallback code. Successful resets are one-time use and revoke every active session for the account. Configure the lifetime with `PASSWORD_RESET_EXPIRE_MINUTES` in the repository-root `.env`.
 
 Task create, update, completion, status-change, and deletion events are stored in `task_events`. History remains available after task deletion and can be filtered by task, event type, and date range.
 

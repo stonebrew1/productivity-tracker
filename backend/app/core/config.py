@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     refresh_cookie_name: str = "momentum_refresh"
     frontend_origin: str = "http://localhost:5173"
     email_verification_expire_hours: int = 24
+    password_reset_expire_minutes: int = 30
     email_delivery_mode: str = "console"
     email_from: str = "Momentum <no-reply@momentum.local>"
     smtp_host: str = ""

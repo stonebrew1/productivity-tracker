@@ -35,6 +35,7 @@ class User(Base):
     task_events = relationship("TaskEvent", back_populates="user", cascade="all, delete-orphan")
     achievements = relationship("Achievement", back_populates="user", cascade="all, delete-orphan")
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+    password_resets = relationship("PasswordReset", back_populates="user", cascade="all, delete-orphan")
     stats = relationship("UserStats", back_populates="user", uselist=False, cascade="all, delete-orphan")
     activity_posts = relationship("ActivityPost", back_populates="user", cascade="all, delete-orphan")
     xp_awards = relationship("XpAward", back_populates="user", cascade="all, delete-orphan")

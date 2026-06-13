@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from secrets import randbelow
 from uuid import UUID, uuid4
 
@@ -15,7 +15,7 @@ from app.core.security import (
     hash_refresh_token,
     verify_password,
 )
-from app.services.email_service import send_verification_email
+from app.models.password_reset import PasswordReset
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.models.user_stats import UserStats
@@ -26,10 +26,15 @@ from app.schemas.auth import (
     RegistrationResponse,
     TokenResponse,
 )
+from app.services.email_service import send_password_reset_email, send_verification_email
 
 
 def verification_url(token: str) -> str:
     return f"{get_settings().frontend_origin.rstrip('/')}/verify-email?token={token}"
+
+
+def password_reset_url(token: str) -> str:
+    return f"{get_settings().frontend_origin.rstrip('/')}/reset-password?token={token}"
 
 
 def issue_email_verification(user: User) -> tuple[str, str, str]:
@@ -159,6 +164,130 @@ async def resend_verification(email: str, db: AsyncSession) -> MessageResponse:
         message=generic_message,
         verification_url=url if get_settings().email_delivery_mode == "console" else None,
     )
+
+
+async def request_password_reset(email: str, db: AsyncSession) -> MessageResponse:
+    generic_message = "If an account exists for that email, reset instructions have been sent."
+    user = await db.scalar(select(User).where(User.email == email.lower()))
+    if not user or not user.is_email_verified:
+        return MessageResponse(message=generic_message)
+
+    now = datetime.now(timezone.utc)
+    active_resets = list(
+        await db.scalars(
+            select(PasswordReset).where(
+                PasswordReset.user_id == user.id,
+                PasswordReset.used_at.is_(None),
+            )
+        )
+    )
+    for reset in active_resets:
+        reset.used_at = now
+
+    raw_token = create_refresh_token()
+    code = f"{randbelow(1_000_000):06d}"
+    db.add(
+        PasswordReset(
+            token=hash_refresh_token(raw_token),
+            code=hash_refresh_token(code),
+            expires_at=now + timedelta(minutes=get_settings().password_reset_expire_minutes),
+            created_at=now,
+            user_id=user.id,
+        )
+    )
+    url = password_reset_url(raw_token)
+    try:
+        await send_password_reset_email(
+            user.email, user.display_name or user.email.split("@")[0], url, code
+        )
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to send password reset email. Try again shortly.",
+        ) from exc
+    return MessageResponse(
+        message=generic_message,
+        verification_url=url if get_settings().email_delivery_mode == "console" else None,
+    )
+
+
+async def reset_password_with_token(
+    token: str, new_password: str, db: AsyncSession
+) -> MessageResponse:
+    reset = await db.scalar(
+        select(PasswordReset).where(
+            PasswordReset.token == hash_refresh_token(token),
+            PasswordReset.used_at.is_(None),
+        )
+    )
+    return await complete_password_reset(reset, new_password, db)
+
+
+async def reset_password_with_code(
+    email: str, code: str, new_password: str, db: AsyncSession
+) -> MessageResponse:
+    user = await db.scalar(select(User).where(User.email == email.lower()))
+    reset = None
+    if user:
+        reset = await db.scalar(
+            select(PasswordReset)
+            .where(
+                PasswordReset.user_id == user.id,
+                PasswordReset.code == hash_refresh_token(code),
+                PasswordReset.used_at.is_(None),
+            )
+            .order_by(PasswordReset.created_at.desc())
+        )
+    return await complete_password_reset(reset, new_password, db)
+
+
+async def complete_password_reset(
+    reset: PasswordReset | None, new_password: str, db: AsyncSession
+) -> MessageResponse:
+    now = datetime.now(timezone.utc)
+    if not reset or reset.expires_at <= now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password reset is invalid or expired.",
+        )
+    user = await db.get(User, reset.user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password reset is invalid or expired.",
+        )
+    if verify_password(new_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Choose a password you have not just used.",
+        )
+
+    user.password_hash = hash_password(new_password)
+    reset.used_at = now
+    other_resets = list(
+        await db.scalars(
+            select(PasswordReset).where(
+                PasswordReset.user_id == user.id,
+                PasswordReset.used_at.is_(None),
+            )
+        )
+    )
+    for other_reset in other_resets:
+        other_reset.used_at = now
+    active_tokens = list(
+        await db.scalars(
+            select(RefreshToken).where(
+                RefreshToken.user_id == user.id,
+                RefreshToken.revoked_at.is_(None),
+            )
+        )
+    )
+    for active_token in active_tokens:
+        active_token.revoked_at = now
+    await db.commit()
+    return MessageResponse(message="Password reset. Sign in with your new password.")
 
 
 async def issue_tokens(

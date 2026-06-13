@@ -14,6 +14,7 @@ from app.models.group import (
     ProductivityGroup,
 )
 from app.models.refresh_token import RefreshToken
+from app.models.password_reset import PasswordReset
 from app.models.social import (
     ActivityPost,
     AccountabilityCommitment,
@@ -47,6 +48,7 @@ __all__ = [
     "GroupXpAward",
     "GroupInvitation",
     "RefreshToken",
+    "PasswordReset",
     "ActivityPost",
     "AccountabilityCommitment",
     "Challenge",

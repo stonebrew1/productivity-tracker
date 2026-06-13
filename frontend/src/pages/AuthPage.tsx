@@ -1,5 +1,6 @@
 import { Check, CheckCircle2, Flame, KeyRound, Mail, Trophy, UserRound, Users, Zap } from "lucide-react";
 import { FormEvent, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { api } from "../api/client";
 import type { RegistrationResponse } from "../types/domain";
@@ -159,6 +160,7 @@ export function AuthPage({ onLogin, onRegister, onResend, error, setError }: Pro
               {isRegister && <label>Name<span className="auth-input"><UserRound size={17} /><input autoComplete="name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} required /></span></label>}
               <label>Email<span className="auth-input"><Mail size={17} /><input autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} type="email" required /></span></label>
               <label>Password<span className="auth-input"><KeyRound size={17} /><input autoComplete={isRegister ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} type="password" required /></span></label>
+              {!isRegister && <Link className="forgot-password-link" to="/forgot-password">Forgot password?</Link>}
               {isRegister && (
                 <>
                   <div className={`password-strength strength-${strength}`}>

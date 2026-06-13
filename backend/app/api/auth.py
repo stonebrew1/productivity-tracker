@@ -13,11 +13,14 @@ from app.models.user import User
 from app.schemas.auth import (
     EmailVerificationRequest,
     EmailVerificationCodeRequest,
+    ForgotPasswordRequest,
     LoginRequest,
     MessageResponse,
     RegisterRequest,
     RegistrationResponse,
     ResendVerificationRequest,
+    ResetPasswordCodeRequest,
+    ResetPasswordRequest,
     TokenResponse,
     VerificationSessionResponse,
 )
@@ -31,6 +34,9 @@ from app.services.auth_service import (
     logout_session,
     refresh_session,
     register,
+    request_password_reset,
+    reset_password_with_code,
+    reset_password_with_token,
     resend_verification,
 )
 
@@ -105,6 +111,38 @@ async def resend_confirmation(
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
     return await resend_verification(str(payload.email), db)
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    return await request_password_reset(str(payload.email), db)
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+async def reset_password(
+    payload: ResetPasswordRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    result = await reset_password_with_token(payload.token, payload.new_password, db)
+    response.delete_cookie(settings.refresh_cookie_name, path="/api/auth")
+    return result
+
+
+@router.post("/reset-password-code", response_model=MessageResponse)
+async def reset_password_code(
+    payload: ResetPasswordCodeRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> MessageResponse:
+    result = await reset_password_with_code(
+        str(payload.email), payload.code, payload.new_password, db
+    )
+    response.delete_cookie(settings.refresh_cookie_name, path="/api/auth")
+    return result
 
 
 @router.post("/login", response_model=TokenResponse)

@@ -28,6 +28,7 @@ services:
       FRONTEND_ORIGIN: http://localhost:5173
       EMAIL_DELIVERY_MODE: ${EMAIL_DELIVERY_MODE:-smtp}
       EMAIL_VERIFICATION_EXPIRE_HOURS: "24"
+      PASSWORD_RESET_EXPIRE_MINUTES: "30"
       EMAIL_FROM: ${EMAIL_FROM:-Momentum <no-reply@momentum.local>}
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}

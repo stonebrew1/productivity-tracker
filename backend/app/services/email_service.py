@@ -71,3 +71,39 @@ async def send_verification_email(
             raise
         return
     logger.warning("Development email verification link for %s: %s", recipient, verification_url)
+
+
+async def send_password_reset_email(
+    recipient: str, display_name: str, reset_url: str, reset_code: str
+) -> None:
+    settings = get_settings()
+    body = (
+        f"Hello {display_name},\n\n"
+        "A password reset was requested for your Momentum account.\n\n"
+        "Open this link to choose a new password:\n"
+        f"{reset_url}\n\n"
+        "Or enter this reset code in the app:\n"
+        f"{reset_code}\n\n"
+        f"This reset expires in {settings.password_reset_expire_minutes} minutes. "
+        "If you did not request it, you can ignore this email."
+    )
+    if settings.email_delivery_mode == "smtp":
+        if not settings.smtp_host:
+            raise RuntimeError("SMTP_HOST must be configured when EMAIL_DELIVERY_MODE=smtp.")
+        try:
+            await asyncio.to_thread(
+                _send_smtp,
+                recipient,
+                "Reset your Momentum password",
+                body,
+            )
+        except Exception:
+            logger.exception(
+                "SMTP password reset delivery failed host=%s port=%s recipient=%s",
+                settings.smtp_host,
+                settings.smtp_port,
+                recipient,
+            )
+            raise
+        return
+    logger.warning("Development password reset link for %s: %s", recipient, reset_url)

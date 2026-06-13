@@ -225,6 +225,8 @@ p { color: var(--muted); line-height: 1.6; }
   transition: background-color 9999s ease-out 0s;
 }
 .auth-panel form > button { margin-top: 4px; }
+.forgot-password-link { justify-self: end; margin-top: -10px; color: #a78bfa; font-size: .7rem; font-weight: 700; text-decoration: none; }
+.forgot-password-link:hover { color: #c4b5fd; }
 .password-strength { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; margin-top: -8px; }
 .password-strength > div { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; }
 .password-strength i { height: 4px; border-radius: 4px; background: var(--surface-3); }
@@ -263,6 +265,33 @@ p { color: var(--muted); line-height: 1.6; }
 .verification-state.loading svg { animation: spin 1s linear infinite; }
 .verification-state.success { background: rgba(16,185,129,.12); color: var(--emerald); }
 .verification-state.error { background: rgba(239,68,68,.12); color: #f87171; }
+
+/* Password recovery */
+.recovery-screen { display: grid; min-height: 100vh; place-items: center; background: var(--bg); padding: 88px 24px 34px; }
+.recovery-brand { position: absolute; top: 28px; left: 30px; color: var(--text); text-decoration: none; }
+.recovery-panel { width: min(460px,100%); border: 1px solid var(--border); border-radius: 8px; background: var(--surface-1); padding: 30px; }
+.recovery-panel > header { margin-bottom: 25px; }
+.recovery-panel > header h1 { margin-bottom: 8px; font-size: 1.7rem; }
+.recovery-panel > header p { margin: 0; font-size: .82rem; }
+.recovery-form { display: grid; gap: 16px; }
+.recovery-form label { display: grid; gap: 8px; color: #b6b6c9; font-size: .74rem; font-weight: 700; }
+.recovery-form > button, .recovery-primary-link {
+  display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 8px;
+  border: 0; border-radius: 8px; background: var(--violet); color: white; padding: 0 17px;
+  font-size: .78rem; font-weight: 700; text-decoration: none;
+}
+.recovery-form > button:hover, .recovery-primary-link:hover { background: var(--violet-light); }
+.recovery-back-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 20px; color: var(--muted); font-size: .72rem; font-weight: 700; text-decoration: none; }
+.recovery-back-link:hover { color: var(--text); }
+.development-reset-link { display: block; margin: -8px 0 20px; color: #a78bfa; font-size: .72rem; font-weight: 700; text-align: center; }
+.recovery-password-checks { margin-top: -5px; }
+.recovery-resend { display: block; border: 0; background: transparent; color: #a78bfa; padding: 15px 0 0; margin: 0 auto; font-size: .72rem; font-weight: 700; }
+.recovery-complete { display: grid; justify-items: center; text-align: center; }
+.recovery-complete > span { display: grid; width: 52px; height: 52px; place-items: center; border-radius: 8px; background: rgba(16,185,129,.12); color: var(--emerald); }
+.recovery-complete.error > span { background: rgba(239,68,68,.12); color: #f87171; }
+.recovery-complete h1 { margin: 18px 0 8px; font-size: 1.7rem; }
+.recovery-complete p { margin-bottom: 22px; font-size: .82rem; }
+.recovery-complete .recovery-primary-link { width: 100%; }
 .auth-switch { margin-top: 20px; text-align: center; font-size: .83rem; }
 .text-button { border: 0; background: transparent; color: #a78bfa; padding: 4px 7px; font-weight: 700; }
 .auth-mobile-brand { display: none; }
