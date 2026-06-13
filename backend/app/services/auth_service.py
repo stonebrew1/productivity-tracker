@@ -110,10 +110,9 @@ async def confirm_email(token: str, db: AsyncSession) -> MessageResponse:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Verification link is invalid or expired.",
         )
+    if user.is_email_verified:
+        return MessageResponse(message="Email is already confirmed. You can sign in.")
     user.is_email_verified = True
-    user.email_verification_token = None
-    user.email_verification_code = None
-    user.email_verification_expires_at = None
     await db.commit()
     return MessageResponse(message="Email confirmed. You can now sign in.")
 
@@ -123,7 +122,6 @@ async def confirm_email_code(email: str, code: str, db: AsyncSession) -> Message
     now = datetime.now(timezone.utc)
     if (
         not user
-        or user.is_email_verified
         or not user.email_verification_code
         or not user.email_verification_expires_at
         or user.email_verification_expires_at <= now
@@ -133,10 +131,9 @@ async def confirm_email_code(email: str, code: str, db: AsyncSession) -> Message
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Confirmation code is invalid or expired.",
         )
+    if user.is_email_verified:
+        return MessageResponse(message="Email is already confirmed. You can sign in.")
     user.is_email_verified = True
-    user.email_verification_token = None
-    user.email_verification_code = None
-    user.email_verification_expires_at = None
     await db.commit()
     return MessageResponse(message="Email confirmed. You can now sign in.")
 

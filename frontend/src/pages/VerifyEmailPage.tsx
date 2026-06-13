@@ -1,15 +1,18 @@
 import { CheckCircle2, LoaderCircle, MailWarning, Zap } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { api } from "../api/client";
 
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
+  const verificationStarted = useRef(false);
   const [state, setState] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("Confirming your email...");
 
   useEffect(() => {
+    if (verificationStarted.current) return;
+    verificationStarted.current = true;
     const token = searchParams.get("token");
     if (!token) {
       setState("error");
