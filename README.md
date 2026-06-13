@@ -75,6 +75,21 @@ New registrations require a display name, a strong password, and email confirmat
 
 Docker Compose reads SMTP overrides from a `.env` file in the repository root. Copy `.env.example` to `.env` and replace the sample Gmail values with a provider account and app password. Verification emails include both a magic link and a six-digit confirmation code.
 
+On Windows, the file location is:
+
+```text
+C:\Users\user\Documents\Codex\2026-06-07\files-mentioned-by-the-user-req\.env
+```
+
+For Gmail, enable 2-Step Verification, create a Google app password, and use that app password as `SMTP_PASSWORD`. Restart the backend after changing `.env`, then inspect delivery diagnostics:
+
+```bash
+docker compose -p productivity-tracker up -d --force-recreate backend
+docker compose -p productivity-tracker logs -f backend
+```
+
+SMTP logs report connection, TLS, authentication, send progress, and exceptions without printing the password, verification link, or confirmation code.
+
 Task create, update, completion, status-change, and deletion events are stored in `task_events`. History remains available after task deletion and can be filtered by task, event type, and date range.
 
 The analytics endpoint aggregates this history into daily, weekly, or monthly trends. It reports created, completed, and deleted tasks; on-time and overdue completion; and completed-task breakdowns by priority and category. The Statistics page exposes date and interval filters for the same report.
