@@ -18,15 +18,13 @@ const NAV_ITEMS: Array<{
   path: string;
   label: string;
   icon: typeof Home;
-  desktopOnly?: boolean;
 }> = [
   { path: "/today", label: "Today", icon: Home },
   { path: "/tasks", label: "Tasks", icon: CheckSquare2 },
   { path: "/social", label: "Social", icon: Users },
   { path: "/groups", label: "Groups", icon: UsersRound },
   { path: "/progress", label: "Progress", icon: Trophy },
-  { path: "/statistics", label: "Statistics", icon: BarChart3 },
-  { path: "/inbox", label: "Inbox", icon: Bell, desktopOnly: true }
+  { path: "/statistics", label: "Statistics", icon: BarChart3 }
 ];
 
 export function App() {
@@ -35,6 +33,7 @@ export function App() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
@@ -43,18 +42,20 @@ export function App() {
 
   async function loadWorkspace() {
     setError(null);
-    const [me, nextTasks, nextCategories, nextAchievements, nextStats] = await Promise.all([
+    const [me, nextTasks, nextCategories, nextAchievements, nextStats, nextNotifications] = await Promise.all([
       api.me(),
       api.tasks(),
       api.categories(),
       api.achievements(),
-      api.statistics()
+      api.statistics(),
+      api.notifications()
     ]);
     setUser(me);
     setTasks(nextTasks);
     setCategories(nextCategories);
     setAchievements(nextAchievements);
     setStats(nextStats);
+    setUnreadNotifications(nextNotifications.filter((notification) => !notification.is_read).length);
   }
 
   function resetWorkspaceState() {
@@ -63,6 +64,7 @@ export function App() {
     setCategories([]);
     setAchievements([]);
     setStats(null);
+    setUnreadNotifications(0);
   }
 
   function clearWorkspace() {
@@ -91,6 +93,21 @@ export function App() {
       });
     });
   }, [navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    const refreshUnread = () => {
+      api.notifications()
+        .then((notifications) => setUnreadNotifications(notifications.filter((notification) => !notification.is_read).length))
+        .catch(() => undefined);
+    };
+    const interval = window.setInterval(refreshUnread, 30_000);
+    window.addEventListener("focus", refreshUnread);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshUnread);
+    };
+  }, [user?.id]);
 
   async function handleVerifiedSession() {
     resetWorkspaceState();
@@ -156,6 +173,7 @@ export function App() {
       ? location.pathname.startsWith("/groups")
       : location.pathname === item.path
   );
+  const activeLabel = location.pathname === "/inbox" ? "Inbox" : activeNav?.label ?? "Today";
 
   return (
     <div className="app-shell">
@@ -199,13 +217,16 @@ export function App() {
         <header className="mobile-header">
           <div className="brand">
             <span className="brand-mark"><Zap size={18} fill="currentColor" /></span>
-            <span className="brand-copy"><strong>Momentum</strong><small>{activeNav?.label ?? "Today"}</small></span>
+            <span className="brand-copy"><strong>Momentum</strong><small>{activeLabel}</small></span>
           </div>
           <span className="mobile-streak"><Flame size={15} /> {streak}</span>
-          <NavLink className="mobile-inbox" title="Inbox" to="/inbox"><Bell size={18} /></NavLink>
+          <InboxLink className="mobile-inbox" unread={unreadNotifications} />
         </header>
         <main className="content">
           <div className="content-inner">
+            <div className="workspace-topbar">
+              <InboxLink className="workspace-inbox" unread={unreadNotifications} />
+            </div>
             {error && <div className="alert">{error}</div>}
             <Routes>
               <Route path="/" element={<Navigate to="/today" replace />} />
@@ -217,20 +238,20 @@ export function App() {
                 path="/tasks"
                 element={<TasksPage tasks={tasks} categories={categories} onChanged={refreshData} onError={setError} />}
               />
-              <Route path="/social" element={<SocialPage onError={setError} />} />
+              <Route path="/social" element={<SocialPage onError={setError} onUnreadChange={setUnreadNotifications} />} />
               <Route path="/groups" element={<GroupsPage onError={setError} />} />
               <Route path="/groups/:groupId" element={<GroupsPage onError={setError} />} />
               <Route path="/groups/:groupId/:section" element={<GroupsPage onError={setError} />} />
               <Route path="/progress" element={<AchievementsPage onError={setError} />} />
               <Route path="/statistics" element={<StatisticsPage stats={stats} />} />
-              <Route path="/inbox" element={<InboxPage onError={setError} />} />
+              <Route path="/inbox" element={<InboxPage onError={setError} onUnreadChange={setUnreadNotifications} />} />
               <Route path="/login" element={<Navigate to="/today" replace />} />
               <Route path="*" element={<Navigate to="/today" replace />} />
             </Routes>
           </div>
         </main>
         <nav className="mobile-nav" aria-label="Mobile navigation">
-          {NAV_ITEMS.filter((item) => !item.desktopOnly).map((item) => {
+          {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink
@@ -248,5 +269,14 @@ export function App() {
         </nav>
       </div>
     </div>
+  );
+}
+
+function InboxLink({ className, unread }: { className: string; unread: number }) {
+  return (
+    <NavLink aria-label={unread > 0 ? `Inbox, ${unread} unread` : "Inbox"} className={className} title="Inbox" to="/inbox">
+      <Bell size={18} />
+      {unread > 0 && <b>{unread > 9 ? "9+" : unread}</b>}
+    </NavLink>
   );
 }

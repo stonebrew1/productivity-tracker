@@ -6,15 +6,18 @@ import type { SocialNotification } from "../types/domain";
 
 type Props = {
   onError: (message: string | null) => void;
+  onUnreadChange: (count: number) => void;
 };
 
-export function InboxPage({ onError }: Props) {
+export function InboxPage({ onError, onUnreadChange }: Props) {
   const [notifications, setNotifications] = useState<SocialNotification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [loading, setLoading] = useState(true);
 
   async function loadInbox() {
-    setNotifications(await api.notifications());
+    const nextNotifications = await api.notifications();
+    setNotifications(nextNotifications);
+    onUnreadChange(nextNotifications.filter((notification) => !notification.is_read).length);
   }
 
   useEffect(() => {

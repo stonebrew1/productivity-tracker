@@ -7,9 +7,10 @@ import type { AccountabilityCommitment, FeedPost, GamificationDashboard, Leaderb
 
 type Props = {
   onError: (message: string | null) => void;
+  onUnreadChange: (count: number) => void;
 };
 
-export function SocialPage({ onError }: Props) {
+export function SocialPage({ onError, onUnreadChange }: Props) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [feed, setFeed] = useState<FeedPost[]>([]);
@@ -39,6 +40,7 @@ export function SocialPage({ onError }: Props) {
     setGame(nextGame);
     setLeaderboard(nextLeaderboard);
     setNotifications(nextNotifications);
+    onUnreadChange(nextNotifications.filter((notification) => !notification.is_read).length);
     setCommitments(nextCommitments);
   }
 
