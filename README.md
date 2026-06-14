@@ -117,7 +117,9 @@ The analytics endpoint aggregates this history into daily, weekly, or monthly tr
 
 The default **Today** screen groups planned work into overdue, today, and next-seven-days queues. Tasks support a planned date (`scheduled_for`), effort estimate (`estimated_minutes`), and focus flag (`is_focus`), with quick creation and inline complete, start, and reschedule actions.
 
-Phase 1 of the social loop awards 20 XP for a task's first completion, with a 200 XP daily cap. Public completions create one feed post; private tasks never enter the feed. Users can edit a profile, follow demo users, and react once to visible completion posts.
+Phase 1 of the social loop awards weighted XP for a task's first completion, with a 200 XP daily cap. Public completions create one feed post; private tasks never enter the feed. Users can edit a profile, follow demo users, and react once to visible completion posts.
+
+Task completion XP is weighted by both priority and estimated effort. The calculation uses a 10 XP base, a 0/5/10 XP low/medium/high priority bonus, and an effort bonus that grows across 15, 30, 60, 120, and 240-minute bands. Tasks without an estimate use 30 minutes. Levels follow an increasing curve: Level 1 requires 100 XP, and every following level requires 50 XP more than the previous one.
 
 Phase 2 adds database-configurable XP rules, daily and weekly quests, quest bonus XP, a seven-badge catalog, locked-badge progress, streak milestones, and a three-badge profile showcase. Quest rewards are idempotent per user and period, and reset naturally at the next UTC day or week.
 

@@ -17,6 +17,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { api } from "../api/client";
 import type { AccountabilityCommitment, Category, Person, Task, TaskPriority, TaskStatus } from "../types/domain";
+import { calculateTaskXp } from "../utils/gamification";
 
 type Props = {
   tasks: Task[];
@@ -32,6 +33,7 @@ type TaskDraft = {
   status: TaskStatus;
   category_id: string;
   deadline: string;
+  estimated_minutes: string;
   visibility: "private" | "public";
 };
 
@@ -45,6 +47,7 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [categoryId, setCategoryId] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [estimatedMinutes, setEstimatedMinutes] = useState("30");
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [newCategory, setNewCategory] = useState("");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -100,6 +103,7 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
         description,
         priority,
         deadline: deadline ? new Date(`${deadline}T23:59:00`).toISOString() : null,
+        estimated_minutes: estimatedMinutes ? Number(estimatedMinutes) : null,
         visibility,
         category_id: categoryId || null
       });
@@ -108,6 +112,7 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
       setPriority("medium");
       setCategoryId("");
       setDeadline("");
+      setEstimatedMinutes("30");
       setVisibility("private");
       setComposerOpen(false);
       await onChanged();
@@ -162,6 +167,7 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
       status: task.status,
       category_id: task.category_id ?? "",
       deadline: task.deadline ? task.deadline.slice(0, 10) : "",
+      estimated_minutes: task.estimated_minutes?.toString() ?? "",
       visibility: task.visibility
     });
   }
@@ -177,6 +183,7 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
         status: taskDraft.status,
         category_id: taskDraft.category_id || null,
         deadline: taskDraft.deadline ? new Date(`${taskDraft.deadline}T23:59:00`).toISOString() : null,
+        estimated_minutes: taskDraft.estimated_minutes ? Number(taskDraft.estimated_minutes) : null,
         visibility: taskDraft.visibility
       });
       setEditingTaskId(null);
@@ -226,7 +233,11 @@ export function TasksPage({ tasks, categories, onChanged, onError }: Props) {
                 {categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
               </select>
               <label className="date-field"><CalendarDays size={15} /><input aria-label="Deadline" type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} /></label>
-              <button disabled={busy}>{busy ? "Creating..." : "Create task"}</button>
+              <label className="task-effort-field">
+                <input aria-label="Estimated minutes" type="number" min="5" max="1440" step="5" value={estimatedMinutes} onChange={(event) => setEstimatedMinutes(event.target.value)} />
+                <span>min</span>
+              </label>
+              <button disabled={busy}>{busy ? "Creating..." : `Create · ${calculateTaskXp(priority, estimatedMinutes ? Number(estimatedMinutes) : null)} XP`}</button>
             </div>
           </form>
           <div className="category-manager">
@@ -349,6 +360,7 @@ function TaskCard(props: TaskCardProps) {
           <select value={draft.status} onChange={(event) => props.onDraft({ ...draft, status: event.target.value as TaskStatus })}><option value="todo">To do</option><option value="in_progress">In progress</option><option value="done">Done</option></select>
           <select value={draft.category_id} onChange={(event) => props.onDraft({ ...draft, category_id: event.target.value })}><option value="">No category</option>{categories.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select>
           <input type="date" value={draft.deadline} onChange={(event) => props.onDraft({ ...draft, deadline: event.target.value })} />
+          <input aria-label="Estimated minutes" type="number" min="5" max="1440" step="5" placeholder="Minutes" value={draft.estimated_minutes} onChange={(event) => props.onDraft({ ...draft, estimated_minutes: event.target.value })} />
           <select value={draft.visibility} onChange={(event) => props.onDraft({ ...draft, visibility: event.target.value as "private" | "public" })}><option value="private">Private</option><option value="public">Public</option></select>
         </div>
         <div className="task-edit-actions"><button title="Save"><Save size={15} /></button><button type="button" title="Cancel" onClick={props.onCancelEdit}><X size={15} /></button></div>
@@ -369,7 +381,7 @@ function TaskCard(props: TaskCardProps) {
           {task.deadline && <time><CalendarDays size={11} />{new Date(task.deadline).toLocaleDateString()}</time>}
         </div>
       </div>
-      {!compact && <span className="xp-chip">+20 XP</span>}
+      {!compact && <span className="xp-chip">+{task.estimated_xp} XP</span>}
       {commitment ? (
         <span className={`commitment-chip ${commitment.status}`} title={`Accountability with ${commitment.partner.display_name || commitment.partner.email}`}>
           <Handshake size={14} />{commitment.status}

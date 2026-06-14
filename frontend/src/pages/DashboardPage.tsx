@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { api } from "../api/client";
 import type { Achievement, Category, Stats, Task, TaskPriority } from "../types/domain";
+import { calculateTaskXp } from "../utils/gamification";
 
 type Props = {
   tasks: Task[];
@@ -220,7 +221,7 @@ function QuickAdd({
           />
           {visibility === "public" ? <Globe2 size={16} /> : <Lock size={16} />}
         </label>
-        <button disabled={busy}>{busy ? "Adding..." : "Add"}</button>
+        <button disabled={busy}>{busy ? "Adding..." : `Add · ${calculateTaskXp(priority, estimatedMinutes === "" ? null : Number(estimatedMinutes))} XP`}</button>
       </form>
     </div>
   );
@@ -300,6 +301,7 @@ function TodayTask({
         <p>
           {category?.name ?? "Uncategorized"}
           {task.estimated_minutes ? ` · ${task.estimated_minutes} min` : ""}
+          {` · ${task.estimated_xp} XP`}
           {taskDate ? ` · ${formatTaskDate(taskDate)}` : ""}
         </p>
       </div>

@@ -364,9 +364,12 @@ p { color: var(--muted); line-height: 1.6; }
 .visibility-segment button.active { background: var(--surface-3); color: var(--text); }
 .visibility-segment button.active.public { background: var(--violet-dim); color: #a78bfa; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; }
-.task-create-row { grid-template-columns: 1fr 1fr minmax(150px,.8fr) auto; }
+.task-create-row { grid-template-columns: 1fr 1fr minmax(150px,.8fr) 100px auto; }
 .date-field { display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--muted); padding-left: 10px; }
 .date-field input { min-width: 0; border: 0; background: transparent; box-shadow: none; }
+.task-effort-field { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--muted); padding-right: 9px; }
+.task-effort-field input { min-width: 0; border: 0; background: transparent; box-shadow: none; padding-right: 3px; }
+.task-effort-field span { font-size: .65rem; }
 .category-form { display: grid; grid-template-columns: 1fr 42px; gap: 8px; max-width: 330px; margin-top: 10px; }
 .category-form button { width: 42px; padding: 0; }
 .category-manager { display: grid; grid-template-columns: minmax(230px,330px) 1fr; align-items: start; gap: 12px; }

@@ -1,8 +1,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, computed_field, ConfigDict, Field
 
+from app.core.gamification import calculate_task_xp
 from app.models.task import TaskPriority, TaskStatus, TaskVisibility
 from app.schemas.achievement import AchievementRead
 
@@ -48,6 +49,11 @@ class TaskRead(BaseModel):
     completed_at: datetime | None
     category_id: UUID | None
     parent_id: UUID | None
+
+    @computed_field
+    @property
+    def estimated_xp(self) -> int:
+        return calculate_task_xp(self.priority, self.estimated_minutes)
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -8,6 +8,11 @@ from app.models.achievement import Achievement
 from app.models.social import ActivityPost, GamificationRule, PostComment, PostReaction, QuestCompletion, XpAward
 from app.models.task import Task, TaskStatus, TaskVisibility
 from app.models.user_stats import UserStats
+from app.core.gamification import (
+    DEFAULT_TASK_XP_RULE,
+    calculate_task_xp,
+    level_progress_from_xp,
+)
 from app.schemas.gamification import BadgeProgressRead, GamificationDashboardRead, QuestRead
 from app.schemas.social import GamificationRead
 from app.services.achievement_service import BADGE_CATALOG, badge_metrics
@@ -16,9 +21,9 @@ from app.services.stats_service import ensure_stats
 
 
 DEFAULT_RULES = {
-    "task_completion": {"xp": 20},
+    "task_completion": DEFAULT_TASK_XP_RULE,
     "daily_xp_cap": {"xp": 200},
-    "level_curve": {"xp_per_level": 100},
+    "level_curve": {"base_xp": 100, "growth_xp": 50},
     "quest_rewards": {
         "daily_finish_2": 25,
         "daily_focus_1": 15,
@@ -83,7 +88,7 @@ QUEST_CATALOG = [
 
 async def get_rules(db: AsyncSession) -> dict[str, dict]:
     rows = list(await db.scalars(select(GamificationRule).where(GamificationRule.is_active.is_(True))))
-    by_code = {row.code: row.value for row in rows}
+    by_code = {row.code: {**DEFAULT_RULES.get(row.code, {}), **row.value} for row in rows}
     for code, value in DEFAULT_RULES.items():
         if code not in by_code:
             db.add(GamificationRule(code=code, value=value))
@@ -92,20 +97,24 @@ async def get_rules(db: AsyncSession) -> dict[str, dict]:
     return by_code
 
 
-def level_from_xp(xp_total: int, xp_per_level: int = 100) -> int:
-    return xp_total // xp_per_level + 1
+def level_from_xp(xp_total: int, base_xp: int = 100, growth_xp: int = 50) -> int:
+    return level_progress_from_xp(xp_total, base_xp, growth_xp)[0]
 
 
 def gamification_snapshot(
     xp_total: int,
     current_streak: int,
-    xp_per_level: int = 100,
+    base_xp: int = 100,
+    growth_xp: int = 50,
 ) -> dict[str, int]:
+    level, xp_into_level, xp_for_next_level = level_progress_from_xp(
+        xp_total, base_xp, growth_xp
+    )
     return {
         "xp_total": xp_total,
-        "level": level_from_xp(xp_total, xp_per_level),
-        "xp_into_level": xp_total % xp_per_level,
-        "xp_for_next_level": xp_per_level,
+        "level": level,
+        "xp_into_level": xp_into_level,
+        "xp_for_next_level": xp_for_next_level,
         "current_streak": current_streak,
     }
 
@@ -116,7 +125,7 @@ async def award_task_completion(task: Task, db: AsyncSession) -> int:
         return 0
 
     rules = await get_rules(db)
-    task_xp = int(rules["task_completion"]["xp"])
+    task_xp = calculate_task_xp(task.priority, task.estimated_minutes, rules["task_completion"])
     daily_cap = int(rules["daily_xp_cap"]["xp"])
     now = datetime.now(timezone.utc)
     day_start = datetime.combine(now.date(), time.min, tzinfo=timezone.utc)
@@ -195,7 +204,7 @@ async def award_quest_rewards(user_id: UUID, db: AsyncSession) -> int:
 async def gamification_dashboard(user_id: UUID, db: AsyncSession) -> GamificationDashboardRead:
     rules = await get_rules(db)
     stats = await ensure_stats(user_id, db)
-    xp_per_level = int(rules["level_curve"]["xp_per_level"])
+    level_curve = rules["level_curve"]
     metrics = await badge_metrics(user_id, db)
     unlocked = {
         item.code: item
@@ -246,7 +255,12 @@ async def gamification_dashboard(user_id: UUID, db: AsyncSession) -> Gamificatio
                 expires_at=end,
             )
         )
-    game = gamification_snapshot(stats.xp_total, stats.current_streak, xp_per_level)
+    game = gamification_snapshot(
+        stats.xp_total,
+        stats.current_streak,
+        int(level_curve["base_xp"]),
+        int(level_curve["growth_xp"]),
+    )
     return GamificationDashboardRead(
         progression=GamificationRead(**game),
         badges=badges,

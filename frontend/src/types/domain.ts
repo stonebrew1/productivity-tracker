@@ -33,6 +33,7 @@ export type Task = {
   completed_at: string | null;
   category_id: string | null;
   parent_id: string | null;
+  estimated_xp: number;
 };
 
 export type Achievement = {
