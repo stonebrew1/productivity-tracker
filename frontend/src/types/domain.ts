@@ -9,6 +9,8 @@ export type User = {
   avatar_url: string | null;
   is_email_verified: boolean;
   role: "user" | "admin";
+  is_blocked: boolean;
+  blocked_at: string | null;
   created_at: string;
 };
 
@@ -43,6 +45,39 @@ export type Achievement = {
   icon: string;
   awarded_at: string;
   task_id: string | null;
+};
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  role: "user" | "admin";
+  is_email_verified: boolean;
+  is_blocked: boolean;
+  blocked_at: string | null;
+  created_at: string;
+  total_tasks: number;
+  completed_tasks: number;
+};
+
+export type AdminUserPage = {
+  items: AdminUser[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type AdminSummary = {
+  total_users: number;
+  verified_users: number;
+  blocked_users: number;
+  administrators: number;
+  total_tasks: number;
+  completed_tasks: number;
+  total_achievements: number;
+  total_groups: number;
+  completion_rate: number;
+  tasks_by_status: Record<string, number>;
 };
 
 export type BadgeProgress = {

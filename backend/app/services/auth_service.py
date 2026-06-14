@@ -97,6 +97,11 @@ async def login(payload: LoginRequest, db: AsyncSession) -> IssuedSession:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Confirm your email before signing in.",
         )
+    if user.is_blocked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account has been blocked.",
+        )
     return await issue_tokens(user, db)
 
 
@@ -356,6 +361,10 @@ async def refresh_session(token: str, db: AsyncSession) -> IssuedSession:
     user = await db.get(User, refresh_token.user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
+    if user.is_blocked:
+        await revoke_token_family(refresh_token.family_id, db)
+        await db.commit()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account has been blocked.")
     refresh_token.revoked_at = now
     issued = await issue_tokens(
         user, db, refresh_token.family_id, revoke_existing=False

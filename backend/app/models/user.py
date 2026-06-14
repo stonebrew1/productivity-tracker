@@ -28,6 +28,8 @@ class User(Base):
     email_verification_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     email_verification_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.USER)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    blocked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")

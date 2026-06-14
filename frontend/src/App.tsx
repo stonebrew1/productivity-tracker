@@ -1,10 +1,11 @@
-import { BarChart3, Bell, CheckSquare2, Flame, Home, LogOut, Trophy, Users, UsersRound, Zap } from "lucide-react";
+import { BarChart3, Bell, CheckSquare2, Flame, Home, LogOut, ShieldCheck, Trophy, Users, UsersRound, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
 import { api, clearTokens, setTokens, subscribeToSessionChanges } from "./api/client";
 import { UserAvatar } from "./components/UserAvatar";
 import { AchievementsPage } from "./pages/AchievementsPage";
+import { AdminPage } from "./pages/AdminPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
@@ -22,13 +23,15 @@ const NAV_ITEMS: Array<{
   path: string;
   label: string;
   icon: typeof Home;
+  adminOnly?: boolean;
 }> = [
   { path: "/today", label: "Today", icon: Home },
   { path: "/tasks", label: "Tasks", icon: CheckSquare2 },
   { path: "/social", label: "Social", icon: Users },
   { path: "/groups", label: "Groups", icon: UsersRound },
   { path: "/progress", label: "Progress", icon: Trophy },
-  { path: "/statistics", label: "Statistics", icon: BarChart3 }
+  { path: "/statistics", label: "Statistics", icon: BarChart3 },
+  { path: "/admin", label: "Admin", icon: ShieldCheck, adminOnly: true }
 ];
 
 export function App() {
@@ -174,7 +177,8 @@ export function App() {
   const level = stats?.level ?? 1;
   const xp = stats?.xp_total ?? 0;
   const streak = stats?.current_streak ?? 0;
-  const activeNav = NAV_ITEMS.find((item) =>
+  const visibleNavItems = NAV_ITEMS.filter((item) => !item.adminOnly || user.role === "admin");
+  const activeNav = visibleNavItems.find((item) =>
     item.path === "/groups"
       ? location.pathname.startsWith("/groups")
       : location.pathname === item.path
@@ -202,7 +206,7 @@ export function App() {
           <i><b style={{ width: `${stats ? Math.round((stats.xp_into_level / stats.xp_for_next_level) * 100) : 0}%` }} /></i>
         </div>
         <nav aria-label="Primary navigation">
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink
@@ -258,8 +262,9 @@ export function App() {
               <Route path="/groups" element={<GroupsPage onError={setError} />} />
               <Route path="/groups/:groupId" element={<GroupsPage onError={setError} />} />
               <Route path="/groups/:groupId/:section" element={<GroupsPage onError={setError} />} />
-              <Route path="/progress" element={<AchievementsPage onError={setError} />} />
+              <Route path="/progress" element={<AchievementsPage tasks={tasks} onChanged={refreshData} onError={setError} />} />
               <Route path="/statistics" element={<StatisticsPage stats={stats} />} />
+              <Route path="/admin" element={user.role === "admin" ? <AdminPage onError={setError} /> : <Navigate to="/today" replace />} />
               <Route path="/inbox" element={<InboxPage onError={setError} onUnreadChange={setUnreadNotifications} />} />
               <Route
                 path="/profile"
@@ -282,7 +287,7 @@ export function App() {
           </div>
         </main>
         <nav className="mobile-nav" aria-label="Mobile navigation">
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink

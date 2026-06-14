@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api import achievements, auth, categories, gamification, groups, social, statistics, tasks
+from app.api import admin, achievements, auth, categories, gamification, groups, social, statistics, tasks
 from app.core.config import get_settings
 from app.core.database import create_database_schema
 
@@ -51,6 +51,7 @@ app.include_router(statistics.router, prefix="/api")
 app.include_router(social.router, prefix="/api")
 app.include_router(gamification.router, prefix="/api")
 app.include_router(groups.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
 
 
 @app.get("/health", tags=["health"])

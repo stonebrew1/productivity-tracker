@@ -34,15 +34,35 @@ TRACKED_TASK_FIELDS = {
 }
 
 
-async def validate_task_links(payload: TaskCreate | TaskUpdate, current_user: User, db: AsyncSession) -> None:
+async def validate_task_links(
+    payload: TaskCreate | TaskUpdate,
+    current_user: User,
+    db: AsyncSession,
+    task_id: UUID | None = None,
+) -> None:
     if payload.category_id:
         category = await db.get(Category, payload.category_id)
         if not category or category.user_id != current_user.id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid category.")
     if payload.parent_id:
+        if payload.parent_id == task_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A task cannot be its own parent.")
         parent = await db.get(Task, payload.parent_id)
         if not parent or parent.user_id != current_user.id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid parent task.")
+        ancestor = parent
+        visited: set[UUID] = set()
+        while ancestor.parent_id:
+            if ancestor.id in visited or ancestor.parent_id == task_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Task hierarchy cannot contain a cycle.",
+                )
+            visited.add(ancestor.id)
+            next_ancestor = await db.get(Task, ancestor.parent_id)
+            if not next_ancestor or next_ancestor.user_id != current_user.id:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid task hierarchy.")
+            ancestor = next_ancestor
 
 
 async def create_task(payload: TaskCreate, current_user: User, db: AsyncSession) -> Task:
@@ -66,7 +86,7 @@ async def update_task(task_id: UUID, payload: TaskUpdate, current_user: User, db
     task = await db.get(Task, task_id)
     if not task or task.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found.")
-    await validate_task_links(payload, current_user, db)
+    await validate_task_links(payload, current_user, db, task.id)
     if payload.visibility == TaskVisibility.PRIVATE:
         active_commitment = await db.scalar(
             select(AccountabilityCommitment.id).where(

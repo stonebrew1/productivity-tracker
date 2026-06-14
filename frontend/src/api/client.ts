@@ -1,5 +1,8 @@
 import type {
   Achievement,
+  AdminSummary,
+  AdminUser,
+  AdminUserPage,
   AccountabilityCommitment,
   AnalyticsInterval,
   AnalyticsReport,
@@ -199,6 +202,9 @@ export const api = {
   categories: () => request<Category[]>("/categories"),
   createCategory: (name: string) =>
     request<Category>("/categories", { method: "POST", body: JSON.stringify({ name }) }),
+  updateCategory: (id: string, name: string) =>
+    request<Category>(`/categories/${id}`, { method: "PUT", body: JSON.stringify({ name }) }),
+  deleteCategory: (id: string) => request<void>(`/categories/${id}`, { method: "DELETE" }),
   tasks: () => request<Task[]>("/tasks"),
   createTask: (payload: {
     title: string;
@@ -218,6 +224,8 @@ export const api = {
     request<{ task: Task; achievements: Achievement[]; xp_awarded: number }>(`/tasks/${id}/complete`, { method: "POST" }),
   deleteTask: (id: string) => request<void>(`/tasks/${id}`, { method: "DELETE" }),
   achievements: () => request<Achievement[]>("/achievements"),
+  createAchievement: (payload: { title: string; description: string; task_id: string }) =>
+    request<Achievement>("/achievements", { method: "POST", body: JSON.stringify(payload) }),
   gamification: () => request<GamificationDashboard>("/gamification"),
   statistics: () => request<Stats>("/statistics"),
   profile: () => request<Profile>("/social/profile"),
@@ -344,7 +352,16 @@ export const api = {
       interval
     });
     return request<AnalyticsReport>(`/statistics/analytics?${params}`);
-  }
+  },
+  adminUsers: (query = "", offset = 0, limit = 20) => {
+    const params = new URLSearchParams({ query, offset: String(offset), limit: String(limit) });
+    return request<AdminUserPage>(`/admin/users?${params}`);
+  },
+  blockUser: (id: string) =>
+    request<AdminUser>(`/admin/users/${id}/block`, { method: "POST" }),
+  unblockUser: (id: string) =>
+    request<AdminUser>(`/admin/users/${id}/block`, { method: "DELETE" }),
+  adminStatistics: () => request<AdminSummary>("/admin/statistics")
 };
 
 export function resolveAssetUrl(path: string | null) {
