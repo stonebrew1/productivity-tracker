@@ -6,25 +6,52 @@ import {
   Globe2,
   Lock,
   Medal,
+  Plus,
   Target,
   Trophy,
   UsersRound,
   Zap
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { api } from "../api/client";
-import type { BadgeProgress, GamificationDashboard, Quest } from "../types/domain";
+import type { Achievement, BadgeProgress, GamificationDashboard, Quest, Task } from "../types/domain";
 
-export function AchievementsPage({ onError }: { onError: (message: string | null) => void }) {
+export function AchievementsPage({ tasks, onChanged, onError }: { tasks: Task[]; onChanged: () => Promise<void>; onError: (message: string | null) => void }) {
   const [dashboard, setDashboard] = useState<GamificationDashboard | null>(null);
-  const [tab, setTab] = useState<"overview" | "quests" | "badges">("overview");
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [tab, setTab] = useState<"overview" | "quests" | "badges" | "personal">("overview");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [taskId, setTaskId] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.gamification()
-      .then(setDashboard)
+    Promise.all([api.gamification(), api.achievements()])
+      .then(([nextDashboard, nextAchievements]) => {
+        setDashboard(nextDashboard);
+        setAchievements(nextAchievements);
+      })
       .catch((error) => onError(error instanceof Error ? error.message : "Unable to load gamification"));
   }, []);
+
+  async function submitAchievement(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    onError(null);
+    try {
+      const achievement = await api.createAchievement({ title, description, task_id: taskId });
+      setAchievements((current) => [achievement, ...current]);
+      setTitle("");
+      setDescription("");
+      setTaskId("");
+      await onChanged();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Unable to add achievement");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (!dashboard) return <p className="muted">Loading gamification...</p>;
 
@@ -50,7 +77,7 @@ export function AchievementsPage({ onError }: { onError: (message: string | null
       </section>
 
       <nav className="page-tabs" aria-label="Progression views">
-        {(["overview", "quests", "badges"] as const).map((item) => <button className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}>{item}</button>)}
+        {(["overview", "quests", "badges", "personal"] as const).map((item) => <button className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}>{item}</button>)}
       </nav>
 
       {(tab === "overview" || tab === "quests") && <section className="quest-section">
@@ -90,6 +117,34 @@ export function AchievementsPage({ onError }: { onError: (message: string | null
           {dashboard.badges.map((badge) => <BadgeCard badge={badge} key={badge.code} />)}
         </div>
       </section>}
+
+      {tab === "personal" && (
+        <section className="personal-achievements">
+          <section className="panel achievement-composer">
+            <div className="section-heading"><h2>Add achievement</h2><span>Link a meaningful result to a task</span></div>
+            <form onSubmit={submitAchievement}>
+              <input placeholder="Achievement title" value={title} onChange={(event) => setTitle(event.target.value)} required />
+              <textarea placeholder="What did you accomplish?" value={description} onChange={(event) => setDescription(event.target.value)} required />
+              <select value={taskId} onChange={(event) => setTaskId(event.target.value)} required>
+                <option value="">Choose related task</option>
+                {tasks.map((task) => <option value={task.id} key={task.id}>{task.title}</option>)}
+              </select>
+              <button disabled={busy || !taskId}><Plus size={16} />{busy ? "Adding..." : "Add achievement"}</button>
+            </form>
+          </section>
+          <div className="personal-achievement-list">
+            {achievements.filter((achievement) => achievement.code === null).map((achievement) => (
+              <article className="personal-achievement" key={achievement.id}>
+                <span><Medal size={19} /></span>
+                <div><h3>{achievement.title}</h3><p>{achievement.description}</p><small>{new Date(achievement.awarded_at).toLocaleDateString()}</small></div>
+              </article>
+            ))}
+            {achievements.every((achievement) => achievement.code !== null) && (
+              <div className="empty-state"><Medal size={22} /><strong>No personal achievements yet</strong><p>Record a result and connect it to the task that made it happen.</p></div>
+            )}
+          </div>
+        </section>
+      )}
     </section>
   );
 }

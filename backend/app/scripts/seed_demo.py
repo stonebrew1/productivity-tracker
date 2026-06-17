@@ -24,7 +24,7 @@ from app.models.social import (
 )
 from app.models.task import Task, TaskPriority, TaskStatus, TaskVisibility
 from app.models.task_event import TaskEvent, TaskEventType
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.user_stats import UserStats
 from app.services.achievement_service import check_and_award
 from app.services.gamification_service import award_quest_rewards
@@ -105,6 +105,9 @@ async def seed_demo() -> None:
         user.display_name = "Alex Morgan"
         user.bio = "Building a strong bachelor project through small, consistent wins."
         user.is_email_verified = True
+        user.role = UserRole.ADMIN
+        user.is_blocked = False
+        user.blocked_at = None
 
         peers: list[User] = []
         for email, display_name, bio in SOCIAL_USERS:

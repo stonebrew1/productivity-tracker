@@ -17,6 +17,8 @@ class UserRead(BaseModel):
     avatar_url: str | None
     is_email_verified: bool
     role: UserRole
+    is_blocked: bool
+    blocked_at: datetime | None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

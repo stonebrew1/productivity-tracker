@@ -45,7 +45,7 @@ hostname on port `8000`, and the backend accepts private-network browser origins
 - `GET/POST /api/tasks`
 - `GET /api/tasks/history`
 - `POST /api/tasks/{task_id}/complete`
-- `GET /api/achievements`
+- `GET/POST /api/achievements`
 - `GET /api/statistics`
 - `GET /api/statistics/analytics`
 - `GET/PUT /api/social/profile`
@@ -76,6 +76,9 @@ hostname on port `8000`, and the backend accepts private-network browser origins
 - `GET/POST /api/groups/{group_id}/milestones`
 - `PUT/DELETE /api/groups/milestones/{milestone_id}`
 - `GET /api/gamification`
+- `GET /api/admin/users`
+- `POST/DELETE /api/admin/users/{user_id}/block`
+- `GET /api/admin/statistics`
 
 ## Notes
 
@@ -106,11 +109,17 @@ Password recovery is available from the sign-in screen. Reset emails contain an 
 
 Task create, update, completion, status-change, and deletion events are stored in `task_events`. History remains available after task deletion and can be filtered by task, event type, and date range.
 
+Tasks can be edited inline, assigned priorities and deadlines, organized into user-managed categories, and broken into nested subtasks. Personal achievements can be recorded from Progression and linked to the task that produced the result.
+
+Administrators have a role-protected `/admin` workspace with paginated user search, account blocking and unblocking, session revocation for blocked accounts, and aggregate platform statistics. The seeded `demo@example.com` account has the administrator role so the full UML flow can be demonstrated.
+
 The analytics endpoint aggregates this history into daily, weekly, or monthly trends. It reports created, completed, and deleted tasks; on-time and overdue completion; and completed-task breakdowns by priority and category. The Statistics page exposes date and interval filters for the same report.
 
 The default **Today** screen groups planned work into overdue, today, and next-seven-days queues. Tasks support a planned date (`scheduled_for`), effort estimate (`estimated_minutes`), and focus flag (`is_focus`), with quick creation and inline complete, start, and reschedule actions.
 
-Phase 1 of the social loop awards 20 XP for a task's first completion, with a 200 XP daily cap. Public completions create one feed post; private tasks never enter the feed. Users can edit a profile, follow demo users, and react once to visible completion posts.
+Phase 1 of the social loop awards weighted XP for a task's first completion, with a 200 XP daily cap. Public completions create one feed post; private tasks never enter the feed. Users can edit a profile, follow demo users, and react once to visible completion posts.
+
+Task completion XP is weighted by both priority and estimated effort. The calculation uses a 10 XP base, a 0/5/10 XP low/medium/high priority bonus, and an effort bonus that grows across 15, 30, 60, 120, and 240-minute bands. Tasks without an estimate use 30 minutes. Levels follow an increasing curve: Level 1 requires 100 XP, and every following level requires 50 XP more than the previous one.
 
 Phase 2 adds database-configurable XP rules, daily and weekly quests, quest bonus XP, a seven-badge catalog, locked-badge progress, streak milestones, and a three-badge profile showcase. Quest rewards are idempotent per user and period, and reset naturally at the next UTC day or week.
 
